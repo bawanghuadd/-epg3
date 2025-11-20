@@ -1,0 +1,570 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-back" @click="goBack">←</text>
+      <text class="nav-title">发布工单</text>
+      <view class="nav-placeholder"></view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 表单区域 -->
+      <view class="form-section">
+        <text class="section-title">工单信息</text>
+        
+        <!-- 服务类型 -->
+        <view class="form-item">
+          <text class="form-label">服务类型</text>
+          <picker mode="selector" :range="serviceTypes" range-key="name" @change="onServiceTypeChange">
+            <view class="picker-view">
+              <text class="picker-text" :class="{ placeholder: !formData.serviceType }">
+                {{ formData.serviceType ? serviceTypes[formData.serviceType].name : '请选择服务类型' }}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 业务领域 -->
+        <view class="form-item">
+          <text class="form-label">业务领域</text>
+          <picker mode="selector" :range="businessDomains" range-key="name" @change="onDomainChange">
+            <view class="picker-view">
+              <text class="picker-text" :class="{ placeholder: !formData.domainId }">
+                {{ formData.domainId ? businessDomains.find((d: any) => d.id === formData.domainId)?.name : '请选择业务领域' }}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 工单标题 -->
+        <view class="form-item">
+          <text class="form-label">工单标题</text>
+          <input 
+            class="form-input" 
+            v-model="formData.title" 
+            placeholder="请简要描述您的需求"
+            placeholder-class="input-placeholder"
+            maxlength="50"
+          />
+        </view>
+
+        <!-- 详细描述 -->
+        <view class="form-item">
+          <text class="form-label">详细描述</text>
+          <textarea 
+            class="form-textarea" 
+            v-model="formData.description" 
+            placeholder="请详细描述您的需求、问题现象等"
+            placeholder-class="input-placeholder"
+            maxlength="500"
+          />
+        </view>
+
+        <!-- 上传图片 -->
+        <view class="form-item">
+          <text class="form-label">上传图片</text>
+          <view class="upload-list">
+            <view class="upload-item" v-for="(img, index) in formData.images" :key="index">
+              <image class="upload-image" :src="img" mode="aspectFill"></image>
+              <view class="delete-btn" @click="deleteImage(index)">×</view>
+            </view>
+            <view class="upload-box" v-if="formData.images.length < 6" @click="chooseImage">
+              <text class="upload-icon">📷</text>
+              <text class="upload-text">上传图片</text>
+            </view>
+          </view>
+          <text class="upload-tip">最多上传6张图片</text>
+        </view>
+
+        <!-- 服务地址 -->
+        <view class="form-item">
+          <text class="form-label">服务地址</text>
+          <view class="address-picker" @click="chooseAddress">
+            <text class="address-text" :class="{ placeholder: !formData.address }">
+              {{ formData.address || '请选择服务地址' }}
+            </text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </view>
+
+        <!-- 联系人 -->
+        <view class="form-item">
+          <text class="form-label">联系人</text>
+          <input 
+            class="form-input" 
+            v-model="formData.contact" 
+            placeholder="请输入联系人姓名"
+            placeholder-class="input-placeholder"
+          />
+        </view>
+
+        <!-- 联系电话 -->
+        <view class="form-item">
+          <text class="form-label">联系电话</text>
+          <input 
+            class="form-input" 
+            v-model="formData.phone" 
+            type="number"
+            placeholder="请输入联系电话"
+            placeholder-class="input-placeholder"
+            maxlength="11"
+          />
+        </view>
+
+        <!-- 期望服务时间 -->
+        <view class="form-item">
+          <text class="form-label">期望服务时间</text>
+          <picker mode="date" @change="onDateChange">
+            <view class="picker-view">
+              <text class="picker-text" :class="{ placeholder: !formData.serviceDate }">
+                {{ formData.serviceDate || '请选择日期' }}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 备注 -->
+        <view class="form-item">
+          <text class="form-label">备注</text>
+          <textarea 
+            class="form-textarea" 
+            v-model="formData.remark" 
+            placeholder="其他补充说明（选填）"
+            placeholder-class="input-placeholder"
+            maxlength="200"
+          />
+        </view>
+      </view>
+
+      <!-- 提交按钮 -->
+      <view class="submit-section">
+        <button class="submit-btn" :class="{ disabled: !canSubmit }" @click="handleSubmit">
+          提交工单
+        </button>
+      </view>
+
+      <!-- 占位 -->
+      <view style="height: 80rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+const formData = ref({
+  serviceType: 0,
+  domainId: 0,
+  title: '',
+  description: '',
+  images: [] as string[],
+  address: '',
+  contact: '',
+  phone: '',
+  serviceDate: '',
+  remark: ''
+})
+
+const serviceTypes = ref([
+  { id: 1, name: '找售后' },
+  { id: 2, name: '找售前' },
+  { id: 3, name: '找团队' }
+])
+
+const businessDomains = ref([
+  { id: 1, name: '充电桩' },
+  { id: 2, name: '智慧交管' },
+  { id: 3, name: '智慧园区' },
+  { id: 4, name: '智慧体育' },
+  { id: 5, name: '智慧警务' },
+  { id: 6, name: '应急消防' },
+  { id: 7, name: '出入口通道' },
+  { id: 8, name: 'AGV机器人' },
+  { id: 9, name: '大楼弱电' }
+])
+
+// 是否可以提交
+const canSubmit = computed(() => {
+  return formData.value.serviceType &&
+         formData.value.domainId &&
+         formData.value.title &&
+         formData.value.description &&
+         formData.value.address &&
+         formData.value.contact &&
+         formData.value.phone &&
+         formData.value.serviceDate
+})
+
+onMounted(() => {
+  // 获取页面参数
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1] as any
+  const options = currentPage.options || {}
+  
+  // 如果有传入服务类型
+  if (options.service_type) {
+    const serviceTypeIndex = parseInt(options.service_type) - 1
+    if (serviceTypeIndex >= 0 && serviceTypeIndex < serviceTypes.value.length) {
+      formData.value.serviceType = serviceTypeIndex
+    }
+  }
+  
+  // 如果有传入业务领域ID
+  if (options.domain_id) {
+    const domainId = parseInt(options.domain_id)
+    const domain = businessDomains.value.find((d: any) => d.id === domainId)
+    if (domain) {
+      formData.value.domainId = domainId
+    }
+  }
+  
+  // 如果有传入复制订单ID
+  if (options.copyFrom) {
+    // TODO: 根据订单ID加载订单信息并填充表单
+    console.log('复制订单:', options.copyFrom)
+  }
+})
+
+// 返回
+function goBack() {
+  uni.navigateBack()
+}
+
+// 服务类型改变
+function onServiceTypeChange(e: any) {
+  formData.value.serviceType = e.detail.value
+}
+
+// 业务领域改变
+function onDomainChange(e: any) {
+  const index = e.detail.value
+  formData.value.domainId = businessDomains.value[index].id
+}
+
+// 选择图片
+function chooseImage() {
+  const remainCount = 6 - formData.value.images.length
+  uni.chooseImage({
+    count: remainCount,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      formData.value.images.push(...res.tempFilePaths)
+    }
+  })
+}
+
+// 删除图片
+function deleteImage(index: number) {
+  formData.value.images.splice(index, 1)
+}
+
+// 选择地址
+function chooseAddress() {
+  uni.showModal({
+    title: '提示',
+    content: '地址选择功能开发中，V2版本将支持地图选点',
+    showCancel: false
+  })
+}
+
+// 日期改变
+function onDateChange(e: any) {
+  formData.value.serviceDate = e.detail.value
+}
+
+// 提交工单
+function handleSubmit() {
+  if (!canSubmit.value) {
+    uni.showToast({
+      title: '请完善工单信息',
+      icon: 'none'
+    })
+    return
+  }
+
+  // 验证手机号
+  if (!/^1[3-9]\d{9}$/.test(formData.value.phone)) {
+    uni.showToast({
+      title: '请输入正确的手机号',
+      icon: 'none'
+    })
+    return
+  }
+
+  uni.showModal({
+    title: '确认提交',
+    content: '确认提交工单吗？提交后将为您匹配合适的工程师。',
+    success: (res) => {
+      if (res.confirm) {
+        submitOrder()
+      }
+    }
+  })
+}
+
+// 提交订单
+function submitOrder() {
+  uni.showLoading({
+    title: '提交中...'
+  })
+
+  // TODO: 实际应上传图片并调用后端API
+  // POST /api/orders/create
+  // {
+  //   service_type: formData.value.serviceType,
+  //   domain_id: formData.value.domainId,
+  //   title: formData.value.title,
+  //   description: formData.value.description,
+  //   images: [...], // 图片URL数组
+  //   address: formData.value.address,
+  //   contact: formData.value.contact,
+  //   phone: formData.value.phone,
+  //   service_date: formData.value.serviceDate,
+  //   remark: formData.value.remark
+  // }
+
+  setTimeout(() => {
+    uni.hideLoading()
+    uni.showModal({
+      title: '提交成功',
+      content: '工单已提交，我们将尽快为您匹配工程师。',
+      showCancel: false,
+      success: () => {
+        // 跳转到订单列表
+        uni.reLaunch({
+          url: '/pages/order/order'
+        })
+      }
+    })
+  }, 2000)
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background: #FFFFFF;
+  padding: calc(env(safe-area-inset-top) + 20rpx) 32rpx 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.nav-back {
+  font-size: 44rpx;
+  color: #333;
+  width: 80rpx;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-placeholder {
+  width: 80rpx;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+.form-section {
+  background: #FFFFFF;
+  margin: 24rpx 32rpx;
+  padding: 32rpx;
+  border-radius: 16rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 32rpx;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.form-input {
+  width: 100%;
+  background: #F5F5F5;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.form-textarea {
+  width: 100%;
+  background: #F5F5F5;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #333;
+  min-height: 200rpx;
+}
+
+.input-placeholder {
+  color: #BDBDBD;
+}
+
+.picker-view {
+  background: #F5F5F5;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #333;
+  
+  &.placeholder {
+    color: #BDBDBD;
+  }
+}
+
+.picker-arrow {
+  font-size: 44rpx;
+  color: #BDBDBD;
+}
+
+// 上传图片
+.upload-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.upload-item {
+  width: 200rpx;
+  height: 200rpx;
+  position: relative;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.upload-image {
+  width: 100%;
+  height: 100%;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 36rpx;
+  line-height: 1;
+}
+
+.upload-box {
+  width: 200rpx;
+  height: 200rpx;
+  background: #F5F5F5;
+  border: 2rpx dashed #D9D9D9;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.upload-icon {
+  font-size: 48rpx;
+  opacity: 0.5;
+}
+
+.upload-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.upload-tip {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 16rpx;
+}
+
+.address-picker {
+  background: #F5F5F5;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.address-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  
+  &.placeholder {
+    color: #BDBDBD;
+  }
+}
+
+// 提交按钮
+.submit-section {
+  padding: 0 32rpx;
+}
+
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+  color: #FFFFFF;
+  padding: 28rpx;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(244, 67, 54, 0.3);
+}
+
+.submit-btn.disabled {
+  background: #BDBDBD;
+  box-shadow: none;
+  opacity: 0.6;
+}
+</style>
+

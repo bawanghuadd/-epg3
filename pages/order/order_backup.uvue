@@ -1,0 +1,838 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-title">我的订单</text>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- Tab切换 - 订单状态 -->
+      <scroll-view scroll-x class="tabs-scroll">
+        <view class="tabs">
+          <view 
+            class="tab-item" 
+            :class="{ active: activeTab === index }"
+            v-for="(tab, index) in tabs" 
+            :key="index"
+            @click="switchTab(index)"
+          >
+            <text class="tab-text">{{ tab.name }}</text>
+            <view class="tab-badge" v-if="tab.count > 0">
+              <text>{{ tab.count > 99 ? '99+' : tab.count }}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 订单列表 -->
+      <view class="order-list">
+        <!-- 空状态 -->
+        <view class="empty-state" v-if="filteredOrders.length === 0">
+          <text class="empty-icon">📋</text>
+          <text class="empty-text">暂无订单</text>
+          <button class="empty-btn" @click="goToCreate">立即下单</button>
+        </view>
+
+        <!-- 订单卡片 -->
+        <view class="order-card" v-for="(order, index) in filteredOrders" :key="index">
+          <!-- 订单头部 -->
+          <view class="order-header">
+            <view class="order-info">
+              <text class="order-id">订单号：{{ order.orderNo }}</text>
+              <text class="order-time">{{ order.createTime }}</text>
+            </view>
+            <text class="order-status" :class="'status-' + order.status">{{ order.statusText }}</text>
+          </view>
+
+          <!-- 订单内容 -->
+          <view class="order-content" @click="goToDetail(order)">
+            <view class="service-info">
+              <text class="service-type">{{ order.serviceType }}</text>
+              <text class="service-title">{{ order.title }}</text>
+              <text class="service-desc">{{ order.description }}</text>
+            </view>
+            <view class="order-detail">
+              <text class="detail-item">📍 {{ order.address }}</text>
+              <text class="detail-item" v-if="order.engineerName">👷 {{ order.engineerName }}</text>
+              <text class="detail-item">💰 ￥{{ order.price }}</text>
+            </view>
+          </view>
+
+          <!-- 订单操作按钮 -->
+          <view class="order-actions">
+            <!-- 待付款 -->
+            <template v-if="order.status === 1">
+              <button class="action-btn secondary" @click.stop="cancelOrder(order)">取消订单</button>
+              <button class="action-btn primary" @click.stop="payOrder(order)">立即支付</button>
+            </template>
+
+            <!-- 待接单 -->
+            <template v-if="order.status === 2">
+              <button class="action-btn secondary" @click.stop="cancelOrder(order)">取消订单</button>
+              <button class="action-btn" @click.stop="goToDetail(order)">查看详情</button>
+            </template>
+
+            <!-- 已接单（待签约） -->
+            <template v-if="order.status === 3">
+              <button class="action-btn secondary" @click.stop="contactEngineer(order)">联系工程师</button>
+              <button class="action-btn primary" @click.stop="signContract(order)">签约</button>
+            </template>
+
+            <!-- 已签约（待服务） -->
+            <template v-if="order.status === 4">
+              <button class="action-btn secondary" @click.stop="contactPlatform(order)">联系平台取消</button>
+              <button class="action-btn" @click.stop="contactEngineer(order)">联系工程师</button>
+            </template>
+
+            <!-- 服务中 -->
+            <template v-if="order.status === 5">
+              <button class="action-btn secondary" @click.stop="reportOrder(order)">投诉/举报</button>
+              <button class="action-btn" @click.stop="contactEngineer(order)">联系工程师</button>
+            </template>
+
+            <!-- 待确认 -->
+            <template v-if="order.status === 6">
+              <button class="action-btn secondary" @click.stop="applyAfterSale(order)">申请售后</button>
+              <button class="action-btn primary" @click.stop="confirmComplete(order)">确认完成</button>
+            </template>
+
+            <!-- 已完成 -->
+            <template v-if="order.status === 7">
+              <button class="action-btn secondary" @click.stop="applyAfterSale(order)">申请售后</button>
+              <button class="action-btn" @click.stop="goToDetail(order)">查看详情</button>
+            </template>
+
+            <!-- 售后中 -->
+            <template v-if="order.status === 8">
+              <button class="action-btn" @click.stop="goToDetail(order)">查看售后进度</button>
+            </template>
+
+            <!-- 已取消 -->
+            <template v-if="order.status === 9">
+              <button class="action-btn" @click.stop="deleteOrder(order)">删除订单</button>
+              <button class="action-btn primary" @click.stop="reOrder(order)">再来一单</button>
+            </template>
+          </view>
+        </view>
+      </view>
+
+      <!-- 占位 -->
+      <view style="height: 180rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item" @click="navigateTo('home')">
+        <text class="nav-icon">🏠</text>
+        <text class="nav-label">首页</text>
+      </view>
+      <view class="nav-item active" @click="navigateTo('order')">
+        <text class="nav-icon">📋</text>
+        <text class="nav-label">订单</text>
+      </view>
+      <view class="fab-button" @click="handleFabClick">
+        <text class="fab-icon">+</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('message')">
+        <text class="nav-icon">💬</text>
+        <text class="nav-label">消息</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('profile')">
+        <text class="nav-icon">👤</text>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+const activeTab = ref(0)
+
+// 订单状态Tab（10个状态）
+const tabs = ref([
+  { name: '全部', status: 0, count: 0 },
+  { name: '待付款', status: 1, count: 0 },
+  { name: '待接单', status: 2, count: 0 },
+  { name: '待签约', status: 3, count: 0 },
+  { name: '待服务', status: 4, count: 0 },
+  { name: '服务中', status: 5, count: 0 },
+  { name: '待确认', status: 6, count: 0 },
+  { name: '已完成', status: 7, count: 0 },
+  { name: '售后中', status: 8, count: 0 },
+  { name: '已取消', status: 9, count: 0 }
+])
+
+// 订单列表（模拟数据）
+const orders = ref([
+  {
+    id: 1,
+    orderNo: 'ORD202501190001',
+    status: 1,
+    statusText: '待付款',
+    serviceType: '售后服务',
+    title: '智慧园区弱电系统维修',
+    description: '网络设备故障，需要紧急维修',
+    address: '扬州市江都区智慧产业园3号楼',
+    engineerName: '',
+    price: '500.00',
+    createTime: '2025-01-19 10:30'
+  },
+  {
+    id: 2,
+    orderNo: 'ORD202501190002',
+    status: 3,
+    statusText: '已接单（待签约）',
+    serviceType: '售前服务',
+    title: '充电桩安装方案咨询',
+    description: '需要专业工程师评估现场',
+    address: '扬州市广陵区商业广场停车场',
+    engineerName: '李工',
+    price: '1200.00',
+    createTime: '2025-01-18 15:20'
+  },
+  {
+    id: 3,
+    orderNo: 'ORD202501180003',
+    status: 5,
+    statusText: '服务中',
+    serviceType: '团队服务',
+    title: '智慧体育场馆综合布线',
+    description: '大型项目，需要团队协作',
+    address: '扬州市邗江区体育中心',
+    engineerName: '张工团队',
+    price: '8500.00',
+    createTime: '2025-01-17 09:00'
+  }
+])
+
+// 根据当前Tab筛选订单
+const filteredOrders = computed(() => {
+  if (activeTab.value === 0) {
+    return orders.value // 全部
+  }
+  const targetStatus = tabs.value[activeTab.value].status
+  return orders.value.filter(order => order.status === targetStatus)
+})
+
+onMounted(() => {
+  loadOrders()
+  updateTabCounts()
+})
+
+function switchTab(index: number) {
+  activeTab.value = index
+}
+
+// 加载订单数据
+function loadOrders() {
+  // TODO: 实际应从后端API获取
+  // GET /api/orders?status={status}
+  console.log('加载订单列表')
+}
+
+// 更新Tab角标数量
+function updateTabCounts() {
+  tabs.value.forEach(tab => {
+    if (tab.status === 0) {
+      tab.count = orders.value.length
+    } else {
+      tab.count = orders.value.filter(o => o.status === tab.status).length
+    }
+  })
+}
+
+// ========== 订单操作 ==========
+
+// 查看订单详情
+function goToDetail(order: any) {
+  uni.navigateTo({
+    url: `/pages/order/detail?id=${order.id}`
+  })
+}
+
+// 立即支付
+function payOrder(order: any) {
+  uni.showModal({
+    title: '确认支付',
+    content: `订单金额：￥${order.price}`,
+    confirmText: '确认支付',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用支付接口
+        uni.showToast({
+          title: '支付功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 取消订单
+function cancelOrder(order: any) {
+  uni.showModal({
+    title: '取消订单',
+    content: '确定要取消这个订单吗？',
+    confirmText: '确定',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用取消订单接口
+        uni.showToast({
+          title: '订单已取消',
+          icon: 'success'
+        })
+        // 刷新列表
+        loadOrders()
+      }
+    }
+  })
+}
+
+// 签约
+function signContract(order: any) {
+  uni.showModal({
+    title: '签订合同',
+    content: '请确认与工程师签订服务合同',
+    confirmText: '确认签约',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 跳转到电子签约页面
+        uni.showToast({
+          title: '签约功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 联系工程师（群聊）
+function contactEngineer(order: any) {
+  uni.showToast({
+    title: '正在进入群聊...',
+    icon: 'loading'
+  })
+  
+  setTimeout(() => {
+    // TODO: 跳转到IM群聊页面
+    uni.showToast({
+      title: 'IM功能开发中',
+      icon: 'none'
+    })
+  }, 1000)
+}
+
+// 联系平台取消（已签约后）
+function contactPlatform(order: any) {
+  uni.showModal({
+    title: '联系平台',
+    content: '订单已签约，需要联系平台客服协助取消',
+    confirmText: '联系客服',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 跳转到客服页面
+        uni.showToast({
+          title: '客服功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 投诉/举报
+function reportOrder(order: any) {
+  uni.showActionSheet({
+    itemList: ['投诉工程师', '举报订单', '取消'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        // 投诉工程师
+        uni.showToast({
+          title: '投诉功能开发中',
+          icon: 'none'
+        })
+      } else if (res.tapIndex === 1) {
+        // 举报订单
+        uni.showToast({
+          title: '举报功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 确认完成
+function confirmComplete(order: any) {
+  uni.showModal({
+    title: '确认完成',
+    content: '确认工程师已完成服务？确认后将无法撤销',
+    confirmText: '确认完成',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用确认完成接口
+        uni.showToast({
+          title: '订单已完成',
+          icon: 'success'
+        })
+        // 刷新列表
+        loadOrders()
+      }
+    }
+  })
+}
+
+// 申请售后
+function applyAfterSale(order: any) {
+  uni.showActionSheet({
+    itemList: ['申请退款', '申请返工', '质量问题', '取消'],
+    success: (res) => {
+      if (res.tapIndex < 3) {
+        // TODO: 跳转到售后申请页面
+        uni.showToast({
+          title: '售后功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 删除订单
+function deleteOrder(order: any) {
+  uni.showModal({
+    title: '删除订单',
+    content: '确定要删除这个订单吗？删除后无法恢复',
+    confirmText: '删除',
+    confirmColor: '#E53935',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用删除订单接口
+        uni.showToast({
+          title: '订单已删除',
+          icon: 'success'
+        })
+        // 刷新列表
+        loadOrders()
+      }
+    }
+  })
+}
+
+// 再来一单
+function reOrder(order: any) {
+  uni.showModal({
+    title: '再来一单',
+    content: '根据此订单信息创建新订单？',
+    confirmText: '确定',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 跳转到发布订单页面，带上原订单信息
+        uni.navigateTo({
+          url: `/pages/order/create?copyFrom=${order.id}`
+        })
+      }
+    }
+  })
+}
+
+// 立即下单
+function goToCreate() {
+  uni.navigateTo({
+    url: '/pages/order/create'
+  })
+}
+
+// 悬浮按钮
+function handleFabClick() {
+  uni.navigateTo({
+    url: '/pages/order/create'
+  })
+}
+
+// 底部导航
+function navigateTo(page: string) {
+  if (page === 'order') {
+    return // 已经在订单页
+  }
+  
+  // 底部导航使用 reLaunch 避免层级超限
+  const pageMap: any = {
+    'home': '/pages/home/home',
+    'message': '/pages/message/message',
+    'profile': '/pages/profile/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 24rpx 32rpx;
+  padding-top: calc(24rpx + env(safe-area-inset-top));
+  text-align: center;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+/* Tab横向滚动容器 */
+.tabs-scroll {
+  background-color: #fff;
+  white-space: nowrap;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tabs {
+  display: inline-flex;
+  flex-direction: row;
+  min-width: 100%;
+}
+
+.tab-item {
+  flex-shrink: 0;
+  padding: 24rpx 32rpx;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.tab-item.active {
+  position: relative;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40rpx;
+  height: 4rpx;
+  background-color: #E53935;
+  border-radius: 2rpx;
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #666;
+  white-space: nowrap;
+}
+
+.tab-item.active .tab-text {
+  color: #E53935;
+  font-weight: 600;
+}
+
+.tab-badge {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  background-color: #E53935;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.order-list {
+  padding: 24rpx 32rpx;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.3;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+  margin-bottom: 40rpx;
+}
+
+.empty-btn {
+  background-color: #E53935;
+  color: #fff;
+  border: none;
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+}
+
+/* 订单卡片 */
+.order-card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.order-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.order-id {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.order-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.order-status {
+  font-size: 26rpx;
+  font-weight: 600;
+  padding: 6rpx 16rpx;
+  border-radius: 12rpx;
+  white-space: nowrap;
+}
+
+/* 订单状态颜色 */
+.status-1 {
+  color: #FF6B00;
+  background-color: #FFF3E6;
+}
+
+.status-2 {
+  color: #3B82F6;
+  background-color: #EFF6FF;
+}
+
+.status-3 {
+  color: #10B981;
+  background-color: #ECFDF5;
+}
+
+.status-4 {
+  color: #8B5CF6;
+  background-color: #F5F3FF;
+}
+
+.status-5 {
+  color: #F59E0B;
+  background-color: #FFFBEB;
+}
+
+.status-6 {
+  color: #06B6D4;
+  background-color: #ECFEFF;
+}
+
+.status-7 {
+  color: #10B981;
+  background-color: #ECFDF5;
+}
+
+.status-8 {
+  color: #EF4444;
+  background-color: #FEF2F2;
+}
+
+.status-9 {
+  color: #999;
+  background-color: #F5F5F5;
+}
+
+/* 订单内容 */
+.order-content {
+  margin-bottom: 24rpx;
+}
+
+.service-info {
+  margin-bottom: 16rpx;
+}
+
+.service-type {
+  display: inline-block;
+  font-size: 22rpx;
+  color: #E53935;
+  background-color: #FFEBEE;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.service-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+  display: block;
+  line-height: 1.4;
+}
+
+.service-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+  display: block;
+}
+
+.order-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.detail-item {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 订单操作按钮 */
+.order-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 16rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.action-btn {
+  padding: 12rpx 28rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  border: 1rpx solid #E0E0E0;
+  background-color: #fff;
+  color: #666;
+  line-height: 1;
+}
+
+.action-btn.secondary {
+  border-color: #E0E0E0;
+  background-color: #fff;
+  color: #666;
+}
+
+.action-btn.primary {
+  border-color: #E53935;
+  background-color: #E53935;
+  color: #fff;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8rpx 0 12rpx;
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 22rpx;
+  color: #666;
+  flex: 1;
+}
+
+.nav-item.active {
+  color: #E53935;
+}
+
+.nav-item.active .nav-icon {
+  color: #E53935;
+}
+
+.nav-icon {
+  font-size: 44rpx;
+}
+
+.nav-label {
+  font-size: 24rpx;
+}
+
+.fab-button {
+  width: 112rpx;
+  height: 112rpx;
+  background: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(244, 67, 54, 0.4);
+  margin-top: -1rpx;
+  position: relative;
+  z-index: 1000;
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: #fff;
+  font-weight: 300;
+  line-height: 1;
+}
+</style>
+

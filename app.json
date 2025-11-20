@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/home/home",
+    "pages/order/order",
+    "pages/message/message",
+    "pages/profile/profile",
+    "pages/profile/verify",
+    "pages/order/create"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "工程师上门维修",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false,
+    "navigationStyle": "custom",
+    "onReachBottomDistance": 50
+  },
+  "networkTimeout": {
+    "request": 10000,
+    "downloadFile": 10000,
+    "connectSocket": 10000,
+    "uploadFile": 10000
+  },
+  "debug": false,
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {},
+  "usingComponents": {},
+  "requiredBackgroundModes": [],
+  "plugins": {},
+  "preloadRule": {},
+  "resizable": true,
+  "navigateToMiniProgramAppIdList": [],
+  "usingStaticServer": false,
+  "darkmode": false,
+  "themeLocation": "theme.json"
+}

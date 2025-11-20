@@ -1,0 +1,774 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="location" @click="selectCity">
+        <image class="location-icon" src="/static/icons/address.png" mode="aspectFit"></image>
+        <text class="city-text">{{ city }}</text>
+        <text class="arrow">▼</text>
+      </view>
+      <view class="divider"></view>
+      <view class="nav-center">
+        <image class="robot-icon" src="/static/icon-png-home/机器人.png" mode="aspectFit"></image>
+        <text class="ai-text">AI客服</text>
+        <text class="hint">一句话下单 ></text>
+      </view>
+      <text class="icon-btn" @click="showMenu">⋯</text>
+      <image class="icon-btn search-icon" src="/static/icons/service-query.png" mode="aspectFit" @click="showSearch"></image>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 黄色横幅 -->
+      <view class="banner-wrapper">
+        <view class="banner-card">
+          <view class="banner-content">
+            <text class="banner-title">工程师不上门必赔</text>
+            <text class="banner-subtitle">至尊会员专属</text>
+            <button class="banner-btn" @click="handleBannerClick">立即查看</button>
+          </view>
+          <view class="red-envelope">
+            <text class="amount">¥20</text>
+            <text class="label">红包</text>
+          </view>
+        </view>
+         
+        <!-- 权益提示条 -->
+        <view class="privilege-bar">
+          <view class="privilege-text">
+            <image class="privilege-icon" src="/static/icons/home.png" mode="aspectFit"></image>
+            <text>您有家庭 <text class="discount">8折</text> 互寄权益可用</text>
+          </view>
+          <text class="action" @click="handlePrivilegeClick">去开通</text>
+        </view>
+      </view>
+
+      <!-- 主要服务区 -->
+      <view class="main-services">
+        <view class="service-item" v-for="(item, index) in mainServices" :key="index" @click="handleServiceClick(item)">
+          <view class="icon-wrapper">
+            <image class="service-icon" :src="item.icon" mode="aspectFit"></image>
+          </view>
+          <text class="service-name">{{ item.name }}</text>
+          <text class="service-desc">{{ item.desc }}</text>
+        </view>
+      </view>
+
+      <!-- 服务网格 -->
+      <view class="service-grid">
+        <view class="grid-item" v-for="(item, index) in gridServices" :key="index" @click="handleGridServiceClick(item)">
+          <view class="grid-icon-wrapper" :class="item.bgClass">
+            <image class="grid-icon" :class="item.iconClass" :src="item.icon" mode="aspectFit"></image>
+          </view>
+          <text class="grid-name">{{ item.name }}</text>
+        </view>
+      </view>
+
+      <!-- 底部操作栏 -->
+      <view class="action-bar">
+        <view class="action-item" v-for="(item, index) in actions" :key="index" @click="handleActionClick(item)">
+          <image class="action-icon" :src="item.icon" mode="aspectFit"></image>
+          <text class="action-text">{{ item.name }}</text>
+        </view>
+      </view>
+
+      <!-- 占位，防止被底部导航遮挡 -->
+      <view style="height: 300rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item active" @click="navigateTo('home')">
+        <image class="nav-icon" src="/static/icons/home-active.png" mode="aspectFit"></image>
+        <text class="nav-label">首页</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('order')">
+        <image class="nav-icon" src="/static/icons/order.png" mode="aspectFit"></image>
+        <text class="nav-label">订单</text>
+      </view>
+      <view class="fab-button" @click="handleFabClick">
+        <text class="fab-icon">+</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('message')">
+        <image class="nav-icon" src="/static/icons/message.png" mode="aspectFit"></image>
+        <text class="nav-label">消息</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('profile')">
+        <image class="nav-icon" src="/static/icons/profile.png" mode="aspectFit"></image>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+
+const city = ref('扬州')
+
+const mainServices = ref([
+  { icon: '/static/icon-png-home/扳手.png', name: '找售后', desc: '维护保养' },
+  { icon: '/static/icons/货车.png', name: '找售前', desc: '安装调试' },
+  { icon: '/static/icons/团队.png', name: '找团队', desc: '项目外包' }
+])
+
+const gridServices = ref([
+  { icon: '/static/icons/charging-pile-line.png', name: '场站充电桩', bgClass: 'bg-red', iconClass: 'icon-red' },
+  { icon: '/static/icons/traffic-light.png', name: '智慧交管', bgClass: 'bg-blue', iconClass: 'icon-blue' },
+  { icon: '/static/icon-png-home/智慧园区.png', name: '智慧园区', bgClass: 'bg-green', iconClass: 'icon-green' },
+  { icon: '/static/icon-png-home/跑步.png', name: '智慧体育', bgClass: 'bg-orange', iconClass: 'icon-orange' },
+  { icon: '/static/icon-png-home/盾牌保卫.png', name: '智慧警务', bgClass: 'bg-purple', iconClass: 'icon-purple' },
+  { icon: '/static/icon-png-home/灭火器.png', name: '应急消防', bgClass: 'bg-red', iconClass: 'icon-red' },
+  { icon: '/static/icons/entrance-exit.png', name: '出入口通道', bgClass: 'bg-cyan', iconClass: 'icon-cyan' },
+  { icon: '/static/icon-png-home/机器人 (1).png', name: 'AGV机器人', bgClass: 'bg-pink', iconClass: 'icon-pink' },
+  { icon: '/static/icons/building-weak.png', name: '大楼弱电', bgClass: 'bg-blue', iconClass: 'icon-blue' },
+  { icon: '/static/icons/cod-payment.png', name: '代收货款', bgClass: 'bg-red', iconClass: 'icon-red' },
+  { icon: '/static/icon-png-home/ZS二维码.png', name: '扫码下单', bgClass: 'bg-blue', iconClass: 'icon-blue' },
+  { icon: '/static/icon-png-home/教育团队.png', name: '找团队', bgClass: 'bg-teal', iconClass: 'icon-teal' }
+])
+
+const actions = ref([
+  { icon: '/static/icons/customer-service.png', name: '在线客服' },
+  { icon: '/static/icons/service-query.png', name: '服务查询' },
+  { icon: '/static/icon-png-home/握手,合作,协作.png', name: '企业合作' }
+])
+
+onMounted(() => {
+  // 检查登录状态
+  checkLoginStatus()
+})
+
+function checkLoginStatus() {
+  const token = uni.getStorageSync('token')
+  const userInfo = uni.getStorageSync('userInfo')
+  
+  if (!token || !userInfo) {
+    // 未登录，跳转到登录页
+    uni.reLaunch({
+      url: '/pages/index/index'
+    })
+  } else {
+    console.log('用户已登录:', userInfo)
+  }
+}
+
+function selectCity() {
+  uni.showActionSheet({
+    itemList: ['扬州', '南京', '苏州', '无锡', '常州'],
+    success: (res) => {
+      const cities = ['扬州', '南京', '苏州', '无锡', '常州']
+      city.value = cities[res.tapIndex]
+      uni.showToast({
+        title: `已切换至${city.value}`,
+        icon: 'none'
+      })
+    }
+  })
+}
+
+function showMenu() {
+  uni.showActionSheet({
+    itemList: ['设置', '帮助', '关于', '退出登录'],
+    success: (res) => {
+      if (res.tapIndex === 3) {
+        // 退出登录
+        uni.showModal({
+          title: '提示',
+          content: '确定要退出登录吗？',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              uni.removeStorageSync('token')
+              uni.removeStorageSync('userInfo')
+              uni.reLaunch({
+                url: '/pages/index/index'
+              })
+            }
+          }
+        })
+      } else {
+        uni.showToast({
+          title: `选择了选项${res.tapIndex + 1}`,
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+function showSearch() {
+  uni.showToast({
+    title: '搜索功能开发中',
+    icon: 'none'
+  })
+}
+
+function handleServiceClick(item: any) {
+  // 根据服务类型跳转到创建订单页面
+  const serviceTypeMap: any = {
+    '找售后': 1,
+    '找售前': 2,
+    '找团队': 3
+  }
+  
+  const serviceType = serviceTypeMap[item.name] || 1
+  
+  uni.navigateTo({
+    url: `/pages/order/create?service_type=${serviceType}`
+  })
+}
+
+function handleGridServiceClick(item: any) {
+  // 网格服务项点击 - 跳转到创建订单页面，并传递业务领域
+  const domainMap: any = {
+    '场站充电桩': 1,
+    '智慧交管': 2,
+    '智慧园区': 3,
+    '智慧体育': 4,
+    '智慧警务': 5,
+    '应急消防': 6,
+    '出入口通道': 7,
+    'AGV机器人': 8,
+    '大楼弱电': 9,
+    '代收货款': 10,
+    '扫码下单': 11,
+    '找团队': 12
+  }
+  
+  const domainId = domainMap[item.name] || 0
+  
+  if (item.name === '扫码下单') {
+    // 扫码下单功能
+    uni.scanCode({
+      success: (scanRes) => {
+        uni.showToast({
+          title: '扫码功能开发中',
+          icon: 'none'
+        })
+      }
+    })
+  } else {
+    // 其他服务跳转到创建订单页面
+    uni.navigateTo({
+      url: `/pages/order/create?domain_id=${domainId}`
+    })
+  }
+}
+
+function handleBannerClick() {
+  // 横幅点击 - 跳转到会员权益页面
+  uni.showToast({
+    title: '会员权益功能开发中',
+    icon: 'none'
+  })
+}
+
+function handlePrivilegeClick() {
+  // 权益提示条点击 - 跳转到权益开通页面
+  uni.showToast({
+    title: '权益开通功能开发中',
+    icon: 'none'
+  })
+}
+
+function handleActionClick(item: any) {
+  // 根据操作类型执行相应功能
+  if (item.name === '在线客服') {
+    uni.showToast({
+      title: '客服功能开发中',
+      icon: 'none'
+    })
+  } else if (item.name === '服务查询') {
+    // 跳转到订单列表
+    uni.reLaunch({
+      url: '/pages/order/order'
+    })
+  } else if (item.name === '企业合作') {
+    uni.showToast({
+      title: '企业合作功能开发中',
+      icon: 'none'
+    })
+  }
+}
+
+function handleFabClick() {
+  uni.showActionSheet({
+    itemList: ['发起服务请求', '扫码下单', '拍照识别'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        // 发起服务请求 - 跳转到创建订单页面
+        uni.navigateTo({
+          url: '/pages/order/create'
+        })
+      } else if (res.tapIndex === 1) {
+        // 扫码下单
+        uni.scanCode({
+          success: (scanRes) => {
+            uni.showToast({
+              title: '扫码功能开发中',
+              icon: 'none'
+            })
+          }
+        })
+      } else if (res.tapIndex === 2) {
+        // 拍照识别
+        uni.chooseImage({
+          count: 1,
+          sourceType: ['camera'],
+          success: (imgRes) => {
+            uni.showToast({
+              title: '拍照识别功能开发中',
+              icon: 'none'
+            })
+          }
+        })
+      }
+    }
+  })
+}
+
+function navigateTo(page: string) {
+  if (page === 'home') {
+    return // 已经在首页
+  }
+  
+  // 底部导航使用 reLaunch 避免层级超限
+  const pageMap: any = {
+    'order': '/pages/order/order',
+    'message': '/pages/message/message',
+    'profile': '/pages/profile/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 20rpx 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.location {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6rpx;
+  font-size: 28rpx;
+  color: #333;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.divider {
+  width: 1rpx;
+  height: 32rpx;
+  background-color: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.location-icon {
+  width: 28rpx;
+  height: 28rpx;
+  flex-shrink: 0;
+  display: block;
+}
+
+.city-text {
+  line-height: 1;
+  display: inline-block;
+}
+
+.arrow {
+  font-size: 18rpx;
+  color: #999;
+  line-height: 1;
+  display: inline-block;
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8rpx;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1;
+}
+
+.robot-icon {
+  width: 28rpx;
+  height: 28rpx;
+  flex-shrink: 0;
+  display: block;
+}
+
+.ai-text {
+  color: #333;
+  font-size: 26rpx;
+  line-height: 1;
+  display: inline-block;
+}
+
+.hint {
+  color: #999;
+  font-size: 24rpx;
+  line-height: 1;
+  display: inline-block;
+}
+
+.icon-btn {
+  font-size: 36rpx;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.search-icon {
+  width: 36rpx;
+  height: 36rpx;
+  flex-shrink: 0;
+  display: block;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+.banner-wrapper {
+  margin: 24rpx 32rpx;
+  position: relative;
+}
+
+.banner-card {
+  background: linear-gradient(135deg, #FFD54F 0%, #FFCA28 100%);
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 40rpx 32rpx 28rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.banner-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.banner-title {
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.banner-subtitle {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.banner-btn {
+  background-color: #fff;
+  color: #F57C00;
+  border: none;
+  padding: 12rpx 11rpx;
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  align-self: flex-start;
+}
+
+.red-envelope {
+  position: absolute;
+  right: 40rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 150rpx;
+  height: 150rpx;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.amount {
+  font-size: 50rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4rpx;
+}
+
+.label {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.privilege-bar {
+  background-color: #fff;
+  border-radius: 0 0 24rpx 24rpx;
+  padding: 20rpx 32rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.privilege-text {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.privilege-icon {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.discount {
+  color: #FF6B35;
+  font-weight: 600;
+  font-size: 26rpx;
+}
+
+.action {
+  color: #1890ff;
+  font-size: 24rpx;
+}
+
+.main-services {
+  margin: 24rpx 32rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 60rpx 32rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.service-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.icon-wrapper {
+  width: 140rpx;
+  height: 140rpx;
+  background-color: #FFF3E0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-icon {
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.service-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.service-desc {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.service-grid {
+  margin: 0 32rpx 24rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40rpx 20rpx;
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.grid-icon-wrapper {
+  width: 110rpx;
+  height: 110rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #F5F5F5;
+}
+
+.grid-icon {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+.grid-name {
+  font-size: 24rpx;
+  color: #333;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.bg-red { background-color: #F5F5F5 !important; }
+.bg-blue { background-color: #F5F5F5 !important; }
+.bg-green { background-color: #F5F5F5 !important; }
+.bg-orange { background-color: #F5F5F5 !important; }
+.bg-purple { background-color: #F5F5F5 !important; }
+.bg-cyan { background-color: #F5F5F5 !important; }
+.bg-pink { background-color: #F5F5F5 !important; }
+.bg-teal { background-color: #F5F5F5 !important; }
+
+.icon-red { color: #f44336; }
+.icon-blue { color: #2196F3; }
+.icon-green { color: #4CAF50; }
+.icon-orange { color: #FF9800; }
+.icon-purple { color: #9C27B0; }
+.icon-cyan { color: #00BCD4; }
+.icon-pink { color: #E91E63; }
+.icon-teal { color: #009688; }
+
+.action-bar {
+  margin: 0 32rpx 32rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.action-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.action-text {
+  font-size: 26rpx;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 8rpx 0 0;
+  padding-bottom: calc(56rpx + env(safe-area-inset-bottom));
+  height: 56rpx;
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+  overflow: visible;  /* 允许圆形按钮溢出到导航栏外 */
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 22rpx;
+  color: #666;
+  flex: 1;
+  margin-top: 0;
+}
+
+.nav-item.active {
+  color: #E53935;
+}
+
+.nav-item.active .nav-label {
+  color: #E53935;
+}
+
+.nav-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.nav-item:not(.active) .nav-icon {
+  opacity: 0.5;
+}
+
+.nav-label {
+  font-size: 24rpx;
+}
+
+.fab-button {
+  width: 112rpx;
+  height: 112rpx;
+  background: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(244, 67, 54, 0.4);
+  margin-top: -56rpx;
+  position: relative;
+  z-index: 1000;
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-4rpx);
+}
+</style>

@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/home/home",
+    "pages/order/order",
+    "pages/message/message",
+    "pages/profile/profile",
+    "pages/profile/verify",
+    "pages/order/create"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "工程师上门维修",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5",
+    "navigationBarHeight": "44px"
+  },
+  "usingComponents": {}
+}

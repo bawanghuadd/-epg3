@@ -1,0 +1,377 @@
+<template>
+  <view class="page">
+    <view class="content">
+      <view class="logo-wrapper">
+        <image class="logo" src="/static/logo.png" mode="aspectFill"></image>
+      </view>
+      <view class="headline">
+        <text class="title">工程师上门维修</text>
+        <text class="subtitle">专业维修服务，随时为您服务</text>
+      </view>
+
+      <view class="welcome">
+        <text class="welcome-title">欢迎，</text>
+        <text class="welcome-subtitle">请授权登录以继续使用</text>
+      </view>
+
+      <view class="actions">
+        <button class="btn primary" @click="handleWeChatLogin" :loading="wechatLoading">
+          微信一键登录
+        </button>
+        <button
+          class="btn secondary"
+          open-type="getPhoneNumber"
+          @getphonenumber="handlePhoneNumber"
+        >
+          授权手机号
+        </button>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { saveLoginInfo, checkLogin, getPhoneNumber as requestPhoneNumber } from '@/utils/auth'
+
+const wechatLoading = ref(false)
+const phoneLoading = ref(false)
+
+// 开发环境标识
+const isDev = true // 设置为 false 连接真实后端
+const debugMode = false // 设置为 true 可查看真实的微信 code（已关闭，方便浏览页面）
+
+onMounted(() => {
+  // 如果已经登录，直接跳转到首页
+  if (checkLogin()) {
+    uni.reLaunch({
+      url: '/pages/home/home'
+    })
+  }
+})
+
+// 请求后端登录接口
+async function requestLogin(code: string) {
+  try {
+    // TODO: 替换为您的实际后端接口地址
+    const API_BASE_URL = 'https://your-api-domain.com'
+    
+    const res = await uni.request({
+      url: `${API_BASE_URL}/api/auth/wechat-login`,
+      method: 'POST',
+      data: {
+        code: code,
+        platform: 'weixin'
+      },
+      header: {
+        'Content-Type': 'application/json'
+      }
+    })
+      
+    return res.data
+  } catch (error) {
+    console.error('请求登录接口失败:', error)
+    throw new Error('网络请求失败')
+  }
+}
+
+// 微信一键登录
+async function handleWeChatLogin() {
+  if (wechatLoading.value) {
+    return
+  }
+  
+  wechatLoading.value = true
+  
+  try {
+    // 调试模式：获取真实微信 code
+    if (debugMode) {
+      console.log('🔍 调试模式：获取真实微信 code')
+      
+      const loginRes = await uni.login({
+        provider: 'weixin',
+        onlyAuthorize: true
+      })
+      
+      console.log('✅ 微信 Code:', loginRes.code)
+      
+      // 弹窗显示 code（可复制）
+      uni.showModal({
+        title: '获取到微信 Code',
+        content: `${loginRes.code}\n\n有效期：5分钟\n长度：${loginRes.code.length} 位`,
+        confirmText: '复制',
+        cancelText: '关闭',
+        success: (res) => {
+          if (res.confirm) {
+            uni.setClipboardData({
+              data: loginRes.code,
+              success: () => {
+                uni.showToast({
+                  title: 'Code 已复制',
+                  icon: 'success'
+                })
+              }
+            })
+          }
+        }
+      })
+      
+      wechatLoading.value = false
+      return
+    }
+    
+    // 开发模式：使用模拟登录
+    if (isDev) {
+      console.log('开发模式：使用模拟登录')
+      await simulateLogin()
+      return
+    }
+    
+    // 生产模式：真实微信登录
+    // 1. 获取微信登录凭证
+    const loginRes = await uni.login({
+      provider: 'weixin',
+      onlyAuthorize: true
+    })
+    
+    console.log('微信登录凭证:', loginRes.code)
+    
+    // 2. 将 code 发送到后端换取 token
+    const result = await requestLogin(loginRes.code)
+    
+    if (result.success) {
+      // 3. 保存登录信息到本地存储
+      saveLoginInfo(result.data.token, result.data.userInfo)
+      
+      // 4. 显示成功提示
+      uni.showToast({
+        title: '登录成功',
+        icon: 'success',
+        duration: 1500
+      })
+      
+      // 5. 延迟跳转到首页
+      setTimeout(() => {
+        uni.reLaunch({
+          url: '/pages/home/home'
+        })
+      }, 1500)
+    } else {
+      throw new Error(result.message || '登录失败')
+    }
+    
+  } catch (error: any) {
+    console.error('登录错误:', error)
+    uni.showToast({
+      title: error.message || '登录失败，请稍后重试',
+      icon: 'none',
+      duration: 2000
+    })
+  } finally {
+    wechatLoading.value = false
+  }
+}
+
+// 模拟登录（用于开发测试）
+async function simulateLogin() {
+  // 模拟网络延迟
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  
+  // 模拟登录数据
+  const mockToken = 'mock_token_' + Date.now()
+  const mockUserInfo = {
+    id: '10001',
+    nickname: '测试用户',
+    avatar: '',  // 使用空字符串，显示默认头像
+    phone: '',
+    is_verified: false,  // 默认未实名认证，触发初始化流程
+    vip_level: 0,        // 0-普通会员 1-VIP 2-金牌
+    createTime: Date.now()
+  }
+  
+  // 保存到本地存储
+  saveLoginInfo(mockToken, mockUserInfo)
+  
+  console.log('模拟登录成功:', mockUserInfo)
+  
+  // 显示成功提示
+  uni.showToast({
+    title: '登录成功',
+    icon: 'success',
+    duration: 1500
+  })
+  
+  // 延迟跳转到首页
+  setTimeout(() => {
+    uni.reLaunch({
+      url: '/pages/home/home'
+    })
+  }, 1500)
+}
+
+// 授权手机号
+async function handlePhoneNumber(event: any) {
+  if (!event?.detail?.code) {
+    uni.showToast({
+      title: '用户取消授权',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (phoneLoading.value) {
+    return
+  }
+  
+  phoneLoading.value = true
+  
+  try {
+    console.log('手机号授权码:', event.detail.code)
+    
+    // 开发模式：模拟手机号
+    if (isDev) {
+      console.log('开发模式：模拟手机号授权')
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      userInfo.phone = '138****8888'
+      uni.setStorageSync('userInfo', userInfo)
+      
+      uni.showToast({
+        title: '手机号授权成功',
+        icon: 'success'
+      })
+      return
+    }
+    
+    // 生产模式：发送到后端解密手机号
+    const result = await requestPhoneNumber(event.detail.code)
+    
+    if (result.success) {
+      // 更新用户信息
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      userInfo.phone = result.data.phoneNumber
+      uni.setStorageSync('userInfo', userInfo)
+      
+      uni.showToast({
+        title: '手机号授权成功',
+        icon: 'success'
+      })
+    } else {
+      throw new Error(result.message || '授权失败')
+    }
+  } catch (error: any) {
+    console.error('手机号授权错误:', error)
+    uni.showToast({
+      title: error.message || '授权失败，请重试',
+      icon: 'none'
+    })
+  } finally {
+    phoneLoading.value = false
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #6f7efb 0%, #7f58ff 45%, #7440cd 100%);
+  display: flex;
+  justify-content: center;
+  padding: 80rpx 40rpx 60rpx;
+  box-sizing: border-box;
+  font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+}
+
+.logo-wrapper {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 40rpx;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40rpx;
+}
+
+.logo {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 24rpx;
+}
+
+.headline {
+  text-align: center;
+  margin-bottom: 60rpx;
+}
+
+.title {
+  font-size: 48rpx;
+  font-weight: 600;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.welcome {
+  text-align: center;
+  margin-bottom: 50rpx;
+}
+
+.welcome-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+}
+
+.welcome-subtitle {
+  display: block;
+  font-size: 28rpx;
+  margin-top: 6rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  margin-bottom: 40rpx;
+}
+
+.btn {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.btn.primary {
+  background-color: #ffffff;
+  color: #5c3bce;
+  box-shadow: 0 18rpx 40rpx rgba(18, 0, 61, 0.25);
+}
+
+.btn.secondary {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border: 2rpx solid rgba(255, 255, 255, 0.4);
+}
+</style>
