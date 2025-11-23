@@ -233,11 +233,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         }),
         e: filteredMessages.value.length === 0
       }, filteredMessages.value.length === 0 ? {} : {}, {
-        f: common_assets._imports_12,
+        f: common_assets._imports_2,
         g: common_vendor.o(($event) => {
           return navigateTo("home");
         }),
-        h: common_assets._imports_13,
+        h: common_assets._imports_3,
         i: common_vendor.o(($event) => {
           return navigateTo("order");
         }),
@@ -246,7 +246,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         l: common_vendor.o(($event) => {
           return navigateTo("message");
         }),
-        m: common_assets._imports_3,
+        m: common_assets._imports_5,
         n: common_vendor.o(($event) => {
           return navigateTo("profile");
         }),

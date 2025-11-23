@@ -1,0 +1,468 @@
+<template>
+  <view class="demo-page">
+    <view class="demo-header">
+      <text class="demo-title">模拟登录测试</text>
+      <text class="demo-subtitle">开发环境专用</text>
+    </view>
+
+    <scroll-view class="demo-content" scroll-y>
+      <!-- 当前登录状态 -->
+      <view class="section">
+        <text class="section-title">当前登录状态</text>
+        <view class="status-card" v-if="currentUser">
+          <view class="status-row">
+            <text class="label">昵称：</text>
+            <text class="value">{{ currentUser.nickname }}</text>
+          </view>
+          <view class="status-row">
+            <text class="label">手机：</text>
+            <text class="value">{{ currentUser.phone }}</text>
+          </view>
+          <view class="status-row">
+            <text class="label">类型：</text>
+            <text class="value badge" :class="currentUser.user_type">
+              {{ currentUser.user_type === 'customer' ? '客户' : '工程师' }}
+            </text>
+          </view>
+          <view class="status-row">
+            <text class="label">认证：</text>
+            <text class="value">{{ currentUser.is_verified ? '✓ 已认证' : '✗ 未认证' }}</text>
+          </view>
+          <view class="status-row">
+            <text class="label">Token：</text>
+            <text class="value token">{{ currentToken }}</text>
+          </view>
+        </view>
+        <view class="empty-state" v-else>
+          <text>未登录</text>
+        </view>
+      </view>
+
+      <!-- 快速登录 -->
+      <view class="section">
+        <text class="section-title">快速登录</text>
+        <view class="button-grid">
+          <view 
+            v-for="user in mockUserList" 
+            :key="user.key"
+            class="user-card"
+            @click="handleLogin(user.key)"
+          >
+            <image class="user-avatar-small" :src="user.avatar" mode="aspectFill"></image>
+            <text class="user-nickname">{{ user.nickname }}</text>
+            <text class="user-type" :class="user.user_type">
+              {{ user.user_type === 'customer' ? '客户' : '工程师' }}
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 工具函数测试 -->
+      <view class="section">
+        <text class="section-title">工具函数</text>
+        <view class="tool-buttons">
+          <button class="tool-btn" @click="checkLoginStatus">检查登录状态</button>
+          <button class="tool-btn" @click="checkMockLogin">是否模拟登录</button>
+          <button class="tool-btn" @click="getUserList">获取用户列表</button>
+          <button class="tool-btn" @click="handleLogout">退出登录</button>
+        </view>
+      </view>
+
+      <!-- 测试场景 -->
+      <view class="section">
+        <text class="section-title">测试场景</text>
+        <view class="scenario-list">
+          <view class="scenario-item" @click="testUnverifiedCustomer">
+            <text class="scenario-title">未认证客户</text>
+            <text class="scenario-desc">测试实名认证流程</text>
+          </view>
+          <view class="scenario-item" @click="testVerifiedCustomer">
+            <text class="scenario-title">已认证客户</text>
+            <text class="scenario-desc">测试完整功能</text>
+          </view>
+          <view class="scenario-item" @click="testNormalEngineer">
+            <text class="scenario-title">普通工程师</text>
+            <text class="scenario-desc">测试接单功能</text>
+          </view>
+          <view class="scenario-item" @click="testSeniorEngineer">
+            <text class="scenario-title">资深工程师</text>
+            <text class="scenario-desc">测试高级功能</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 日志输出 -->
+      <view class="section" v-if="logs.length > 0">
+        <view class="section-header">
+          <text class="section-title">操作日志</text>
+          <text class="clear-btn" @click="clearLogs">清空</text>
+        </view>
+        <view class="log-container">
+          <view v-for="(log, index) in logs" :key="index" class="log-item">
+            <text class="log-time">{{ log.time }}</text>
+            <text class="log-text">{{ log.text }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view style="height: 100rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { mockLogin, getMockUserList, isMockLogin } from '../../utils/mock-login'
+import { isLoggedIn, getUserInfo as getAuthUserInfo, getToken, logout } from '../../utils/auth'
+
+const currentUser = ref<any>(null)
+const currentToken = ref('')
+const mockUserList = ref<any[]>([])
+const logs = ref<any[]>([])
+
+// 添加日志
+function addLog(text: string) {
+  const now = new Date()
+  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+  logs.value.unshift({ time, text })
+  if (logs.value.length > 20) {
+    logs.value = logs.value.slice(0, 20)
+  }
+}
+
+// 清空日志
+function clearLogs() {
+  logs.value = []
+  addLog('日志已清空')
+}
+
+// 刷新当前用户信息
+function refreshUserInfo() {
+  currentUser.value = getAuthUserInfo()
+  currentToken.value = getToken() || ''
+}
+
+// 处理登录
+async function handleLogin(userType: string) {
+  try {
+    addLog(`开始登录: ${userType}`)
+    await mockLogin(userType, {
+      showLoading: true,
+      showToast: true,
+      autoNavigate: false,
+      delay: 500
+    })
+    addLog(`登录成功: ${userType}`)
+    refreshUserInfo()
+  } catch (error: any) {
+    addLog(`登录失败: ${error.message}`)
+  }
+}
+
+// 检查登录状态
+function checkLoginStatus() {
+  const loggedIn = isLoggedIn()
+  addLog(`登录状态: ${loggedIn ? '已登录' : '未登录'}`)
+  uni.showToast({
+    title: loggedIn ? '已登录' : '未登录',
+    icon: loggedIn ? 'success' : 'none'
+  })
+}
+
+// 检查是否模拟登录
+function checkMockLogin() {
+  const isMock = isMockLogin()
+  addLog(`是否模拟登录: ${isMock ? '是' : '否'}`)
+  uni.showToast({
+    title: isMock ? '模拟登录' : '真实登录',
+    icon: 'none'
+  })
+}
+
+// 获取用户列表
+function getUserList() {
+  const list = getMockUserList()
+  addLog(`获取到 ${list.length} 个测试账号`)
+  console.log('模拟用户列表:', list)
+  uni.showToast({
+    title: `共 ${list.length} 个账号`,
+    icon: 'none'
+  })
+}
+
+// 退出登录
+async function handleLogout() {
+  try {
+    await logout()
+    addLog('已退出登录')
+    refreshUserInfo()
+  } catch (error) {
+    addLog('取消退出')
+  }
+}
+
+// 测试场景
+async function testUnverifiedCustomer() {
+  addLog('场景测试: 未认证客户')
+  await handleLogin('customer')
+}
+
+async function testVerifiedCustomer() {
+  addLog('场景测试: 已认证客户')
+  await handleLogin('customer2')
+}
+
+async function testNormalEngineer() {
+  addLog('场景测试: 普通工程师')
+  await handleLogin('engineer')
+}
+
+async function testSeniorEngineer() {
+  addLog('场景测试: 资深工程师')
+  await handleLogin('engineer2')
+}
+
+onMounted(() => {
+  refreshUserInfo()
+  mockUserList.value = getMockUserList()
+  addLog('页面加载完成')
+})
+</script>
+
+<style scoped lang="scss">
+.demo-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.demo-header {
+  padding: 80rpx 40rpx 40rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  text-align: center;
+  color: #fff;
+}
+
+.demo-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.demo-subtitle {
+  display: block;
+  font-size: 26rpx;
+  opacity: 0.9;
+}
+
+.demo-content {
+  flex: 1;
+  padding: 40rpx 30rpx;
+}
+
+.section {
+  margin-bottom: 40rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.clear-btn {
+  font-size: 26rpx;
+  color: #667eea;
+  padding: 10rpx 20rpx;
+}
+
+.status-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.status-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #666;
+  width: 140rpx;
+}
+
+.value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.value.token {
+  font-size: 22rpx;
+  color: #999;
+  word-break: break-all;
+}
+
+.value.badge {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.value.badge.customer {
+  background-color: #4CAF50;
+}
+
+.value.badge.engineer {
+  background-color: #FF9800;
+}
+
+.empty-state {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 60rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.user-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar-small {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  margin-bottom: 16rpx;
+}
+
+.user-nickname {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.user-type {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  color: #fff;
+}
+
+.user-type.customer {
+  background-color: #4CAF50;
+}
+
+.user-type.engineer {
+  background-color: #FF9800;
+}
+
+.tool-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+
+.tool-btn {
+  flex: 1;
+  min-width: 200rpx;
+  height: 80rpx;
+  background-color: #fff;
+  border: 2rpx solid #667eea;
+  color: #667eea;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+}
+
+.scenario-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.scenario-item {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.scenario-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.scenario-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #999;
+}
+
+.log-container {
+  background-color: #1e1e1e;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  max-height: 600rpx;
+}
+
+.log-item {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #333;
+}
+
+.log-item:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  display: inline-block;
+  color: #888;
+  font-size: 22rpx;
+  margin-right: 16rpx;
+  font-family: 'Courier New', monospace;
+}
+
+.log-text {
+  color: #fff;
+  font-size: 24rpx;
+  font-family: 'Courier New', monospace;
+}
+</style>
+

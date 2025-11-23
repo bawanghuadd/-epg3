@@ -1,0 +1,318 @@
+/**
+ * 样式混入
+ * 提供常用的样式混入，提高代码复用性
+ */
+
+@import './variables.scss';
+
+// ==================== 文本相关 ====================
+
+// 单行省略
+@mixin ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 多行省略
+@mixin ellipsis-multi($lines: 2) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ==================== 布局相关 ====================
+
+// Flex 居中
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Flex 列居中
+@mixin flex-column-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+// Flex 行布局（左右分布）
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// Flex 行布局（左对齐）
+@mixin flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+// Flex 行布局（右对齐）
+@mixin flex-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+// ==================== 卡片相关 ====================
+
+// 基础卡片
+@mixin card {
+  background-color: $bg-primary;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+}
+
+// 大卡片
+@mixin card-lg {
+  @include card;
+  border-radius: $radius-xxl;
+  padding: $spacing-xl;
+}
+
+// 小卡片
+@mixin card-sm {
+  @include card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+
+// 悬浮卡片
+@mixin card-hover {
+  @include card;
+  box-shadow: $shadow-md;
+  transition: box-shadow $transition-base;
+  
+  &:active {
+    box-shadow: $shadow-lg;
+  }
+}
+
+// ==================== 按钮相关 ====================
+
+// 按钮基础样式
+@mixin button-base {
+  border: none;
+  border-radius: $radius-round;
+  font-size: $font-md;
+  font-weight: $font-weight-semibold;
+  padding: $spacing-md $spacing-xl;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+  
+  &::after {
+    border: none;
+  }
+}
+
+// 主按钮
+@mixin button-primary {
+  @include button-base;
+  background: $color-primary-gradient;
+  color: $text-white;
+  box-shadow: 0 8rpx 24rpx rgba($color-primary, 0.3);
+  
+  &:active {
+    opacity: 0.9;
+  }
+}
+
+// 次要按钮
+@mixin button-secondary {
+  @include button-base;
+  background-color: $bg-primary;
+  color: $text-secondary;
+  border: 1rpx solid $border-color;
+  box-shadow: none;
+  
+  &:active {
+    background-color: $bg-secondary;
+  }
+}
+
+// 文本按钮
+@mixin button-text {
+  @include button-base;
+  background-color: transparent;
+  color: $color-primary;
+  box-shadow: none;
+  padding: $spacing-sm $spacing-md;
+  
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+// 禁用按钮
+@mixin button-disabled {
+  background: $text-disabled;
+  color: $text-white;
+  box-shadow: none;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+// 小按钮
+@mixin button-sm {
+  padding: 12rpx 28rpx;
+  font-size: $font-sm;
+  border-radius: 40rpx;
+}
+
+// 大按钮
+@mixin button-lg {
+  padding: 32rpx 64rpx;
+  font-size: $font-lg;
+}
+
+// ==================== 徽章相关 ====================
+
+// 徽章
+@mixin badge {
+  position: absolute;
+  min-width: 32rpx;
+  height: 32rpx;
+  background-color: $color-danger;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-size: $font-xs;
+  color: $text-white;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  box-shadow: 0 2rpx 8rpx rgba($color-danger, 0.3);
+}
+
+// 小圆点徽章
+@mixin badge-dot {
+  position: absolute;
+  width: 16rpx;
+  height: 16rpx;
+  background-color: $color-danger;
+  border-radius: 50%;
+  border: 2rpx solid $bg-primary;
+}
+
+// ==================== 图标容器 ====================
+
+// 圆形图标容器
+@mixin icon-wrapper($size: 96rpx, $bg-color: $bg-secondary) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background-color: $bg-color;
+  @include flex-center;
+}
+
+// 圆角图标容器
+@mixin icon-wrapper-rounded($size: 96rpx, $bg-color: $bg-secondary, $radius: $radius-lg) {
+  width: $size;
+  height: $size;
+  border-radius: $radius;
+  background-color: $bg-color;
+  @include flex-center;
+}
+
+// ==================== 分割线 ====================
+
+// 横向分割线
+@mixin divider-horizontal {
+  width: 100%;
+  height: 1rpx;
+  background-color: $border-light;
+}
+
+// 纵向分割线
+@mixin divider-vertical($height: 32rpx) {
+  width: 1rpx;
+  height: $height;
+  background-color: $border-light;
+}
+
+// ==================== 安全区域 ====================
+
+// 顶部安全区域
+@mixin safe-area-top($padding: 0) {
+  padding-top: calc(#{$padding} + #{$safe-area-top});
+}
+
+// 底部安全区域
+@mixin safe-area-bottom($padding: 0) {
+  padding-bottom: calc(#{$padding} + #{$safe-area-bottom});
+}
+
+// ==================== 渐变背景 ====================
+
+// 主题渐变
+@mixin gradient-primary {
+  background: $color-primary-gradient;
+}
+
+// 自定义渐变
+@mixin gradient($start-color, $end-color, $deg: 135deg) {
+  background: linear-gradient($deg, $start-color 0%, $end-color 100%);
+}
+
+// ==================== 遮罩层 ====================
+
+// 半透明遮罩
+@mixin mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: $bg-mask;
+  z-index: $z-index-modal;
+}
+
+// ==================== 空状态 ====================
+
+// 空状态容器
+@mixin empty-state {
+  @include flex-column-center;
+  padding: 120rpx 0;
+  
+  .empty-icon {
+    font-size: 120rpx;
+    margin-bottom: $spacing-md;
+    opacity: 0.3;
+  }
+  
+  .empty-text {
+    font-size: $font-md;
+    color: $text-tertiary;
+    margin-bottom: $spacing-xl;
+  }
+}
+
+// ==================== 加载状态 ====================
+
+// 骨架屏
+@mixin skeleton {
+  background: linear-gradient(90deg, $bg-secondary 25%, $bg-tertiary 50%, $bg-secondary 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+

@@ -26,54 +26,87 @@
           授权手机号
         </button>
       </view>
+
+      <!-- 模拟登录区域（开发环境） -->
+      <view class="mock-login-section" v-if="showMockLogin">
+        <view class="mock-divider">
+          <text class="divider-text">开发环境</text>
+        </view>
+        <view class="mock-buttons">
+          <button class="btn mock customer" @click="handleMockLogin('customer')">
+            模拟客户登录
+          </button>
+          <button class="btn mock engineer" @click="handleMockLogin('engineer')">
+            模拟工程师登录
+          </button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { saveLoginInfo, checkLogin, getPhoneNumber as requestPhoneNumber } from '@/utils/auth'
+import { isLoggedIn, setToken, setUserInfo, navigateToHome } from '../../utils/auth'
+import { wechatLogin, phoneLogin } from '../../utils/api'
+import { USER_TYPES, ROUTES } from '../../config'
+import { mockLogin } from '../../utils/mock-login'
 
 const wechatLoading = ref(false)
 const phoneLoading = ref(false)
 
-// 开发环境标识
-const isDev = true // 设置为 false 连接真实后端
-const debugMode = false // 设置为 true 可查看真实的微信 code（已关闭，方便浏览页面）
+// 调试模式：设置为 true 可查看真实的微信 code
+const debugMode = false
 
-onMounted(() => {
-  // 如果已经登录，直接跳转到首页
-  if (checkLogin()) {
-    uni.reLaunch({
-      url: '/pages/home/home'
-    })
-  }
-})
+// 是否显示模拟登录（开发环境）
+const showMockLogin = ref(true)
 
-// 请求后端登录接口
-async function requestLogin(code: string) {
-  try {
-    // TODO: 替换为您的实际后端接口地址
-    const API_BASE_URL = 'https://your-api-domain.com'
-    
-    const res = await uni.request({
-      url: `${API_BASE_URL}/api/auth/wechat-login`,
-      method: 'POST',
-      data: {
-        code: code,
-        platform: 'weixin'
-      },
-      header: {
-        'Content-Type': 'application/json'
-      }
-    })
-      
-    return res.data
-  } catch (error) {
-    console.error('请求登录接口失败:', error)
-    throw new Error('网络请求失败')
+// 用户类型映射
+const userTypeMap: Record<string, 'engineer' | 'customer'> = {
+  'customer': 'customer',
+  'engineer': 'engineer'
+}
+
+// 转换后端数据格式为前端需要的格式
+function transformUserInfo(backendData: any) {
+  return {
+    id: String(backendData.userId || ''),
+    nickname: backendData.nickname || '微信用户',
+    avatar: backendData.avatar || '',
+    phone: backendData.phone || '',
+    user_type: userTypeMap[backendData.userType] || 'customer' as 'engineer' | 'customer',
+    is_verified: backendData.isVerified || false,
+    vip_level: backendData.role || 0,
+    createTime: Date.now()
   }
 }
+
+// 保存登录信息并跳转
+function saveLoginInfoAndNavigate(token: string, backendData: any) {
+  const userInfo = transformUserInfo(backendData)
+  setToken(token)
+  setUserInfo(userInfo)
+  
+  console.log('登录成功，用户信息已保存:', userInfo)
+  
+  const message = backendData.isFirstLogin ? '注册成功' : '登录成功'
+  uni.showToast({
+    title: message,
+    icon: 'success',
+    duration: 1500
+  })
+  
+  setTimeout(() => {
+    navigateToHome()
+  }, 1500)
+}
+
+onMounted(() => {
+  // 如果已经登录，根据用户类型跳转到对应首页
+  if (isLoggedIn()) {
+    navigateToHome()
+  }
+})
 
 // 微信一键登录
 async function handleWeChatLogin() {
@@ -93,7 +126,7 @@ async function handleWeChatLogin() {
         onlyAuthorize: true
       })
       
-      console.log('✅ 微信 Code:', loginRes.code)
+      console.log('✅ 微信 Code:', loginRes)
       
       // 弹窗显示 code（可复制）
       uni.showModal({
@@ -120,13 +153,6 @@ async function handleWeChatLogin() {
       return
     }
     
-    // 开发模式：使用模拟登录
-    if (isDev) {
-      console.log('开发模式：使用模拟登录')
-      await simulateLogin()
-      return
-    }
-    
     // 生产模式：真实微信登录
     // 1. 获取微信登录凭证
     const loginRes = await uni.login({
@@ -134,30 +160,33 @@ async function handleWeChatLogin() {
       onlyAuthorize: true
     })
     
-    console.log('微信登录凭证:', loginRes.code)
+    console.log('微信登录凭证:', loginRes)
     
-    // 2. 将 code 发送到后端换取 token
-    const result = await requestLogin(loginRes.code)
-    
-    if (result.success) {
-      // 3. 保存登录信息到本地存储
-      saveLoginInfo(result.data.token, result.data.userInfo)
-      
-      // 4. 显示成功提示
-      uni.showToast({
-        title: '登录成功',
-        icon: 'success',
-        duration: 1500
+    // 2. 获取微信用户信息
+    let wechatUserInfo = null
+    try {
+      const userInfoRes = await uni.getUserProfile({
+        desc: '用于完善用户资料'
       })
-      
-      // 5. 延迟跳转到首页
-      setTimeout(() => {
-        uni.reLaunch({
-          url: '/pages/home/home'
-        })
-      }, 1500)
+      wechatUserInfo = userInfoRes.userInfo
+    } catch (err) {
+      console.log('用户拒绝授权用户信息，使用 code 登录')
+    }
+    
+    // 3. 将 code 和用户信息发送到后端进行登录/注册
+    const result = await wechatLogin({
+      code: loginRes.code,
+      nickname: wechatUserInfo?.nickName || '',
+      avatar: wechatUserInfo?.avatarUrl || '',
+      role: wechatUserInfo?.role ?? 1
+    })
+    
+    // 后端返回结构: { code: 0, data: {...}, msg: "..." }
+    if (result.code === 0 && result.data) {
+      // 4. 保存登录信息并跳转
+      saveLoginInfoAndNavigate(result.data.token, result.data)
     } else {
-      throw new Error(result.message || '登录失败')
+      throw new Error(result.msg || '登录失败')
     }
     
   } catch (error: any) {
@@ -172,44 +201,25 @@ async function handleWeChatLogin() {
   }
 }
 
-// 模拟登录（用于开发测试）
-async function simulateLogin() {
-  // 模拟网络延迟
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // 模拟登录数据
-  const mockToken = 'mock_token_' + Date.now()
-  const mockUserInfo = {
-    id: '10001',
-    nickname: '测试用户',
-    avatar: '',  // 使用空字符串，显示默认头像
-    phone: '',
-    is_verified: false,  // 默认未实名认证，触发初始化流程
-    vip_level: 0,        // 0-普通会员 1-VIP 2-金牌
-    createTime: Date.now()
-  }
-  
-  // 保存到本地存储
-  saveLoginInfo(mockToken, mockUserInfo)
-  
-  console.log('模拟登录成功:', mockUserInfo)
-  
-  // 显示成功提示
-  uni.showToast({
-    title: '登录成功',
-    icon: 'success',
-    duration: 1500
-  })
-  
-  // 延迟跳转到首页
-  setTimeout(() => {
-    uni.reLaunch({
-      url: '/pages/home/home'
+// 模拟登录
+async function handleMockLogin(userType: 'customer' | 'engineer') {
+  try {
+    await mockLogin(userType, {
+      showLoading: true,
+      showToast: true,
+      autoNavigate: true,
+      delay: 800
     })
-  }, 1500)
+  } catch (error: any) {
+    console.error('模拟登录失败:', error)
+    uni.showToast({
+      title: error.message || '登录失败',
+      icon: 'none'
+    })
+  }
 }
 
-// 授权手机号
+// 授权手机号（同时进行登录/注册）
 async function handlePhoneNumber(event: any) {
   if (!event?.detail?.code) {
     uni.showToast({
@@ -228,37 +238,36 @@ async function handlePhoneNumber(event: any) {
   try {
     console.log('手机号授权码:', event.detail.code)
     
-    // 开发模式：模拟手机号
-    if (isDev) {
-      console.log('开发模式：模拟手机号授权')
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      const userInfo = uni.getStorageSync('userInfo') || {}
-      userInfo.phone = '138****8888'
-      uni.setStorageSync('userInfo', userInfo)
-      
-      uni.showToast({
-        title: '手机号授权成功',
-        icon: 'success'
+    // 获取微信用户信息（可选）
+    let wechatUserInfo = null
+    try {
+      const userInfoRes = await uni.getUserProfile({
+        desc: '用于完善用户资料'
       })
-      return
+      wechatUserInfo = userInfoRes.userInfo
+    } catch (err) {
+      console.log('用户拒绝授权用户信息')
     }
     
-    // 生产模式：发送到后端解密手机号
-    const result = await requestPhoneNumber(event.detail.code)
+    // 获取微信登录 code
+    const loginRes = await uni.login({
+      provider: 'weixin',
+      onlyAuthorize: true
+    })
     
-    if (result.success) {
-      // 更新用户信息
-      const userInfo = uni.getStorageSync('userInfo') || {}
-      userInfo.phone = result.data.phoneNumber
-      uni.setStorageSync('userInfo', userInfo)
-      
-      uni.showToast({
-        title: '手机号授权成功',
-        icon: 'success'
-      })
+    // 调用后端接口进行登录/注册
+    const result = await phoneLogin({
+      phoneCode: event.detail.code,
+      wechatCode: loginRes.code,
+      userInfo: wechatUserInfo
+    })
+    
+    // 后端返回结构: { code: 0, data: {...}, msg: "..." }
+    if (result.code === 0 && result.data) {
+      // 保存登录信息并跳转
+      saveLoginInfoAndNavigate(result.data.token, result.data)
     } else {
-      throw new Error(result.message || '授权失败')
+      throw new Error(result.msg || '授权失败')
     }
   } catch (error: any) {
     console.error('手机号授权错误:', error)
@@ -373,5 +382,71 @@ async function handlePhoneNumber(event: any) {
   background-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
   border: 2rpx solid rgba(255, 255, 255, 0.4);
+}
+
+/* 模拟登录样式 */
+.mock-login-section {
+  width: 100%;
+  margin-top: 60rpx;
+  padding-top: 40rpx;
+}
+
+.mock-divider {
+  position: relative;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.mock-divider::before,
+.mock-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.mock-divider::before {
+  left: 0;
+}
+
+.mock-divider::after {
+  right: 0;
+}
+
+.divider-text {
+  display: inline-block;
+  padding: 0 20rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  background-color: transparent;
+}
+
+.mock-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.btn.mock {
+  height: 80rpx;
+  font-size: 28rpx;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.btn.mock.customer {
+  border-left: 6rpx solid #4CAF50;
+}
+
+.btn.mock.engineer {
+  border-left: 6rpx solid #FF9800;
+}
+
+.btn.mock:active {
+  opacity: 0.7;
 }
 </style>

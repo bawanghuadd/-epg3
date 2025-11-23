@@ -31,5 +31,7 @@
   },
   "appid": "wxa141de148d51d107",
   "editorSetting": {},
-  "libVersion": "3.11.2"
+  "libVersion": "3.11.2",
+  "miniprogramRoot": "./",
+  "cloudfunctionRoot": "./"
 }

@@ -1,0 +1,140 @@
+/**
+ * 样式变量定义
+ * 统一管理项目中的所有样式变量
+ */
+
+// ==================== 主题色 ====================
+$color-primary: #E53935;
+$color-primary-light: #F44336;
+$color-primary-dark: #C62828;
+$color-primary-gradient: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+
+// ==================== 文字颜色 ====================
+$text-primary: #333333;
+$text-secondary: #666666;
+$text-tertiary: #999999;
+$text-placeholder: #BDBDBD;
+$text-disabled: #BDBDBD;
+$text-white: #FFFFFF;
+$text-black: #000000;
+
+// ==================== 背景色 ====================
+$bg-primary: #FFFFFF;
+$bg-secondary: #F5F5F5;
+$bg-tertiary: #F8F8F8;
+$bg-dark: #333333;
+$bg-mask: rgba(0, 0, 0, 0.5);
+
+// ==================== 边框色 ====================
+$border-color: #E0E0E0;
+$border-light: #F0F0F0;
+$border-dark: #D0D0D0;
+
+// ==================== 状态色 ====================
+$color-success: #10B981;
+$color-warning: #F59E0B;
+$color-error: #E53935;
+$color-danger: #E53935;
+$color-info: #3B82F6;
+
+// 状态色背景
+$bg-success: #ECFDF5;
+$bg-warning: #FFFBEB;
+$bg-error: #FEF2F2;
+$bg-info: #EFF6FF;
+
+// ==================== 圆角 ====================
+$radius-xs: 4rpx;
+$radius-sm: 8rpx;
+$radius-md: 12rpx;
+$radius-lg: 16rpx;
+$radius-xl: 20rpx;
+$radius-xxl: 24rpx;
+$radius-round: 50%;
+
+// 兼容旧变量名
+$radius-small: $radius-sm;
+$radius-medium: $radius-md;
+$radius-large: $radius-lg;
+$radius-xlarge: $radius-xxl;
+
+// ==================== 间距 ====================
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 40rpx;
+$spacing-xxl: 48rpx;
+
+// ==================== 字体大小 ====================
+$font-xs: 20rpx;
+$font-sm: 24rpx;
+$font-base: 26rpx;
+$font-md: 28rpx;
+$font-lg: 32rpx;
+$font-xl: 36rpx;
+$font-xxl: 40rpx;
+$font-xxxl: 48rpx;
+
+// ==================== 字体粗细 ====================
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// ==================== 行高 ====================
+$line-height-tight: 1.2;
+$line-height-normal: 1.5;
+$line-height-relaxed: 1.8;
+
+// ==================== 阴影 ====================
+$shadow-xs: 0 1rpx 4rpx rgba(0, 0, 0, 0.04);
+$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+$shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+$shadow-xl: 0 12rpx 32rpx rgba(0, 0, 0, 0.12);
+
+// ==================== 过渡动画 ====================
+$transition-fast: 0.15s;
+$transition-base: 0.3s;
+$transition-slow: 0.5s;
+
+// ==================== 安全区域 ====================
+$safe-area-top: env(safe-area-inset-top);
+$safe-area-bottom: env(safe-area-inset-bottom);
+$safe-area-left: env(safe-area-inset-left);
+$safe-area-right: env(safe-area-inset-right);
+
+// ==================== Z-index 层级 ====================
+$z-index-base: 1;
+$z-index-nav: 100;
+$z-index-tabbar: 999;
+$z-index-fab: 1000;
+$z-index-popup: 1500;
+$z-index-modal: 2000;
+$z-index-toast: 3000;
+
+// ==================== 业务相关颜色 ====================
+// 订单状态色
+$status-pending: #FF6B00;      // 待付款
+$status-waiting: #3B82F6;      // 待接单
+$status-signed: #10B981;       // 待签约
+$status-ready: #8B5CF6;        // 待服务
+$status-processing: #F59E0B;   // 服务中
+$status-checking: #06B6D4;     // 待确认
+$status-completed: #10B981;    // 已完成
+$status-aftersale: #EF4444;    // 售后中
+$status-cancelled: #999999;    // 已取消
+
+// 订单状态背景色
+$status-pending-bg: #FFF3E6;
+$status-waiting-bg: #EFF6FF;
+$status-signed-bg: #ECFDF5;
+$status-ready-bg: #F5F3FF;
+$status-processing-bg: #FFFBEB;
+$status-checking-bg: #ECFEFF;
+$status-completed-bg: #ECFDF5;
+$status-aftersale-bg: #FEF2F2;
+$status-cancelled-bg: #F5F5F5;
+

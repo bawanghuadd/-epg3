@@ -330,6 +330,27 @@
   font-size: 44rpx;
   color: #D9D9D9;
 }
+
+/* 开发工具样式 */
+.dev-item.data-v-a67938aa {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border-left: 4rpx solid #667eea;
+}
+.menu-icon.purple.data-v-a67938aa {
+  background-color: #EDE7F6;
+}
+.menu-icon-emoji.data-v-a67938aa {
+  font-size: 36rpx;
+}
+.menu-badge.data-v-a67938aa {
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background-color: #667eea;
+  margin-left: 12rpx;
+  font-weight: 600;
+}
 .bottom-nav.data-v-a67938aa {
   position: fixed;
   bottom: 0;

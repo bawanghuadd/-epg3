@@ -13,6 +13,9 @@
         <text class="ai-text">AI客服</text>
         <text class="hint">一句话下单 ></text>
       </view>
+      <view class="logout-btn" @click="handleLogout">
+        <text class="logout-text">退出</text>
+      </view>
       <text class="icon-btn" @click="showMenu">⋯</text>
       <image class="icon-btn search-icon" src="/static/icons/service-query.png" mode="aspectFit" @click="showSearch"></image>
     </view>
@@ -102,8 +105,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { logout } from '../../utils/auth'
 
 const city = ref('扬州')
+
+// 退出登录
+async function handleLogout() {
+  try {
+    await logout()
+  } catch (error) {
+    console.error('退出登录失败:', error)
+  }
+}
 
 const mainServices = ref([
   { icon: '/static/icon-png-home/扳手.png', name: '找售后', desc: '维护保养' },
@@ -113,17 +126,17 @@ const mainServices = ref([
 
 const gridServices = ref([
   { icon: '/static/icons/charging-pile-line.png', name: '场站充电桩', bgClass: 'bg-red', iconClass: 'icon-red' },
-  { icon: '/static/icons/traffic-light.png', name: '智慧交管', bgClass: 'bg-blue', iconClass: 'icon-blue' },
+  { icon: '/static/icon-png-home/信号灯 (2).png', name: '智慧交管', bgClass: 'bg-blue', iconClass: 'icon-blue' },
   { icon: '/static/icon-png-home/智慧园区.png', name: '智慧园区', bgClass: 'bg-green', iconClass: 'icon-green' },
-  { icon: '/static/icon-png-home/跑步.png', name: '智慧体育', bgClass: 'bg-orange', iconClass: 'icon-orange' },
+  { icon: '/static/icon-png-home/跑步 (1).png', name: '智慧体育', bgClass: 'bg-orange', iconClass: 'icon-orange' },
   { icon: '/static/icon-png-home/盾牌保卫.png', name: '智慧警务', bgClass: 'bg-purple', iconClass: 'icon-purple' },
   { icon: '/static/icon-png-home/灭火器.png', name: '应急消防', bgClass: 'bg-red', iconClass: 'icon-red' },
-  { icon: '/static/icons/entrance-exit.png', name: '出入口通道', bgClass: 'bg-cyan', iconClass: 'icon-cyan' },
-  { icon: '/static/icon-png-home/机器人 (1).png', name: 'AGV机器人', bgClass: 'bg-pink', iconClass: 'icon-pink' },
+  { icon: '/static/icon-png-home/出入口通道.png', name: '出入口通道', bgClass: 'bg-cyan', iconClass: 'icon-cyan' },
+  { icon: '/static/icon-png-home/机器人 (2).png', name: 'AGV机器人', bgClass: 'bg-pink', iconClass: 'icon-pink' },
   { icon: '/static/icons/building-weak.png', name: '大楼弱电', bgClass: 'bg-blue', iconClass: 'icon-blue' },
   { icon: '/static/icons/cod-payment.png', name: '代收货款', bgClass: 'bg-red', iconClass: 'icon-red' },
-  { icon: '/static/icon-png-home/ZS二维码.png', name: '扫码下单', bgClass: 'bg-blue', iconClass: 'icon-blue' },
-  { icon: '/static/icon-png-home/教育团队.png', name: '找团队', bgClass: 'bg-teal', iconClass: 'icon-teal' }
+  { icon: '/static/icon-png-home/二维码 (1).png', name: '扫码下单', bgClass: 'bg-blue', iconClass: 'icon-blue' },
+  { icon: '/static/icon-png-home/团队 (2).png', name: '找团队', bgClass: 'bg-teal', iconClass: 'icon-teal' }
 ])
 
 const actions = ref([
@@ -146,9 +159,18 @@ function checkLoginStatus() {
     uni.reLaunch({
       url: '/pages/index/index'
     })
-  } else {
-    console.log('用户已登录:', userInfo)
+    return
   }
+  
+  // 检查用户类型，如果是工程师，跳转到工程师页面
+  if (userInfo.user_type === 'engineer') {
+    uni.reLaunch({
+      url: '/pages/engineer/home'
+    })
+    return
+  }
+  
+  console.log('客户已登录:', userInfo)
 }
 
 function selectCity() {
@@ -202,18 +224,28 @@ function showSearch() {
 }
 
 function handleServiceClick(item: any) {
-  // 根据服务类型跳转到创建订单页面
-  const serviceTypeMap: any = {
-    '找售后': 1,
-    '找售前': 2,
-    '找团队': 3
+  // 根据服务类型跳转到对应页面
+  if (item.name === '找售前') {
+    // 跳转到找售前页面
+    uni.navigateTo({
+      url: '/pages/service/presales'
+    })
+  } else if (item.name === '找售后') {
+    // 跳转到找售后页面
+    uni.navigateTo({
+      url: '/pages/service/aftersales'
+    })
+  } else if (item.name === '找团队') {
+    // 跳转到找售前页面，默认选中团队服务
+    uni.navigateTo({
+      url: '/pages/service/presales?service_type=4'
+    })
+  } else {
+    // 其他服务类型跳转到创建订单页面
+    uni.navigateTo({
+      url: '/pages/order/create?service_type=3'
+    })
   }
-  
-  const serviceType = serviceTypeMap[item.name] || 1
-  
-  uni.navigateTo({
-    url: `/pages/order/create?service_type=${serviceType}`
-  })
 }
 
 function handleGridServiceClick(item: any) {
@@ -235,7 +267,12 @@ function handleGridServiceClick(item: any) {
   
   const domainId = domainMap[item.name] || 0
   
-  if (item.name === '扫码下单') {
+  // 场站充电桩、智慧交管、智慧园区、智慧体育跳转到售后页面
+  if (['场站充电桩', '智慧交管', '智慧园区', '智慧体育'].includes(item.name)) {
+    uni.navigateTo({
+      url: `/pages/service/aftersales?domain_id=${domainId}&service_name=${encodeURIComponent(item.name)}`
+    })
+  } else if (item.name === '扫码下单') {
     // 扫码下单功能
     uni.scanCode({
       success: (scanRes) => {
@@ -432,6 +469,28 @@ function navigateTo(page: string) {
   font-size: 24rpx;
   line-height: 1;
   display: inline-block;
+}
+
+.logout-btn {
+  padding: 8rpx 16rpx;
+  background-color: #FF6B35;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  margin: 0 8rpx;
+}
+
+.logout-btn:active {
+  opacity: 0.8;
+  transform: scale(0.95);
+}
+
+.logout-text {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 500;
 }
 
 .icon-btn {

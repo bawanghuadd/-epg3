@@ -1,0 +1,125 @@
+<template>
+  <view class="nav-bar" :style="{ paddingTop: safeAreaTop }">
+    <view class="nav-content">
+      <!-- 左侧：返回按钮或自定义内容 -->
+      <view class="nav-left">
+        <view v-if="showBack" class="nav-back" @click="handleBack">
+          <text class="back-icon">‹</text>
+        </view>
+        <slot name="left"></slot>
+      </view>
+      
+      <!-- 中间：标题 -->
+      <view class="nav-center">
+        <text v-if="title" class="nav-title">{{ title }}</text>
+        <slot name="center"></slot>
+      </view>
+      
+      <!-- 右侧：自定义内容 -->
+      <view class="nav-right">
+        <slot name="right"></slot>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+// Props
+interface Props {
+  title?: string
+  showBack?: boolean
+  backgroundColor?: string
+  textColor?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  title: '',
+  showBack: false,
+  backgroundColor: '#ffffff',
+  textColor: '#333333'
+})
+
+// Emits
+const emit = defineEmits<{
+  back: []
+}>()
+
+// 计算顶部安全区域
+const safeAreaTop = computed(() => {
+  return 'calc(24rpx + env(safe-area-inset-top))'
+})
+
+// 返回按钮处理
+function handleBack() {
+  emit('back')
+  uni.navigateBack({
+    delta: 1
+  })
+}
+</script>
+
+<style scoped lang="scss">
+@import '@/styles/variables.scss';
+
+.nav-bar {
+  background-color: v-bind(backgroundColor);
+  border-bottom: 1rpx solid $border-light;
+  position: relative;
+  z-index: 100;
+}
+
+.nav-content {
+  height: 88rpx;
+  padding: 0 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 80rpx;
+}
+
+.nav-back {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-icon {
+  font-size: 48rpx;
+  color: v-bind(textColor);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-title {
+  font-size: $font-lg;
+  font-weight: 600;
+  color: v-bind(textColor);
+  text-align: center;
+}
+
+.nav-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 80rpx;
+  justify-content: flex-end;
+}
+</style>

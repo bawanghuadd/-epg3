@@ -1,0 +1,964 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-back" @click="goBack">←</text>
+      <text class="nav-title">发布需求</text>
+      <view class="nav-placeholder"></view>
+    </view>
+
+    <!-- 服务类型导航栏 -->
+    <view class="service-nav" v-if="currentServiceName">
+      <text class="service-nav-text">当前服务：{{ currentServiceName }}</text>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 选择服务类型 -->
+      <view class="section">
+        <text class="section-title">选择服务类型</text>
+        <view class="service-type-group">
+          <view 
+            class="service-type-card" 
+            v-for="(item, index) in serviceTypes" 
+            :key="index"
+            :class="{ active: formData.serviceType === item.value }"
+            @click="selectServiceType(item.value)"
+          >
+            <view class="check-mark" v-if="formData.serviceType === item.value">✓</view>
+            <view class="card-header">
+              <image class="service-icon" :src="item.icon" mode="aspectFit"></image>
+            </view>
+            <text class="service-name">{{ item.name }}</text>
+            <text class="service-desc">{{ item.desc }}</text>
+            <text class="service-detail">{{ item.detail }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 请选择问题类型 -->
+      <view class="section">
+        <text class="section-title">请选择问题类型 <text class="optional">(可多选)</text></text>
+        <view class="problem-type-group">
+          <view 
+            class="problem-type-item" 
+            v-for="(item, index) in problemTypes" 
+            :key="index"
+            :class="{ active: item.selected }"
+            @click="toggleProblemType(index)"
+          >
+            <view class="check-mark" v-if="item.selected">✓</view>
+            <text class="problem-name">{{ item.name }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 是否发起工单 -->
+      <view class="section">
+        <text class="section-title">是否发起工单</text>
+        <view class="option-group">
+          <view 
+            class="option-item" 
+            :class="{ active: formData.initiateOrder === true }"
+            @click="selectInitiateOrder(true)"
+          >
+            <view class="check-mark" v-if="formData.initiateOrder === true">✓</view>
+            <text class="option-text">是</text>
+          </view>
+          <view 
+            class="option-item" 
+            :class="{ active: formData.initiateOrder === false }"
+            @click="selectInitiateOrder(false)"
+          >
+            <view class="check-mark" v-if="formData.initiateOrder === false">✓</view>
+            <text class="option-text">否</text>
+          </view>
+        </view>
+        <view class="tip">
+          <view class="tip-dot"></view>
+          <text class="tip-text">选择"是"表示您自己发起工单，选择"否"表示代他人发起</text>
+        </view>
+      </view>
+
+      <!-- 工单分发模式 -->
+      <view class="section">
+        <text class="section-title">工单分发模式</text>
+        <view class="option-group">
+          <view 
+            class="option-item" 
+            :class="{ active: formData.distributionMode === 'auto' }"
+            @click="selectDistributionMode('auto')"
+          >
+            <view class="check-mark" v-if="formData.distributionMode === 'auto'">✓</view>
+            <text class="option-text">自动分配</text>
+          </view>
+          <view 
+            class="option-item" 
+            :class="{ active: formData.distributionMode === 'assign' }"
+            @click="selectDistributionMode('assign')"
+          >
+            <view class="check-mark" v-if="formData.distributionMode === 'assign'">✓</view>
+            <text class="option-text">指定工程师</text>
+          </view>
+        </view>
+        <view class="tip">
+          <view class="tip-dot"></view>
+          <text class="tip-text">自动分配:系统根据距离和评分推荐工程师;指定工程师:您可选择指定的服务人员</text>
+        </view>
+      </view>
+
+      <!-- 服务方式 -->
+      <view class="section">
+        <text class="section-title">服务方式</text>
+        <view class="option-group">
+          <view 
+            class="option-item" 
+            :class="{ active: formData.serviceMethod === 'online' }"
+            @click="selectServiceMethod('online')"
+          >
+            <view class="check-mark" v-if="formData.serviceMethod === 'online'">✓</view>
+            <text class="option-text">线上服务</text>
+          </view>
+          <view 
+            class="option-item" 
+            :class="{ active: formData.serviceMethod === 'onsite' }"
+            @click="selectServiceMethod('onsite')"
+          >
+            <view class="check-mark" v-if="formData.serviceMethod === 'onsite'">✓</view>
+            <text class="option-text">线下上门</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 服务地址 -->
+      <view class="section">
+        <text class="section-title">服务地址</text>
+        <view class="address-card" @click="chooseAddress">
+          <view class="address-content">
+            <text class="address-name">{{ formData.address.name || '扬州市智慧园区' }}</text>
+            <text class="address-detail">{{ formData.address.detail || '江苏省扬州市邗江区文昌西路456号' }}</text>
+            <text class="address-contact">{{ formData.address.contact || '王经理 138****8888' }}</text>
+          </view>
+          <text class="arrow">›</text>
+        </view>
+        <view class="tip">
+          <view class="tip-dot"></view>
+          <text class="tip-text">点击可选择或新增服务地址</text>
+        </view>
+      </view>
+
+      <!-- 期望服务时间 -->
+      <view class="section">
+        <text class="section-title">期望服务时间</text>
+        <view class="datetime-picker-wrapper">
+          <picker mode="date" :value="serviceDate" @change="onDateChange">
+            <view class="picker-card">
+              <text class="calendar-icon">📅</text>
+              <text class="picker-text">{{ serviceDate || '2025-11-10' }}</text>
+            </view>
+          </picker>
+          <picker mode="time" :value="serviceTime" @change="onTimeChange">
+            <view class="picker-card">
+              <text class="picker-text">{{ serviceTime || '14:00' }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <!-- 预计结束服务时间 -->
+      <view class="section">
+        <text class="section-title">预计结束服务时间</text>
+        <view class="datetime-picker-wrapper">
+          <picker mode="date" :value="endServiceDate" @change="onEndDateChange">
+            <view class="picker-card">
+              <text class="calendar-icon">📅</text>
+              <text class="picker-text">{{ endServiceDate || '2025-11-11' }}</text>
+            </view>
+          </picker>
+          <picker mode="time" :value="endServiceTime" @change="onEndTimeChange">
+            <view class="picker-card">
+              <text class="picker-text">{{ endServiceTime || '18:00' }}</text>
+              <text class="arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        <view class="tip">
+          <view class="tip-dot"></view>
+          <text class="tip-text">工期可在服务过程中与工程师协商调整</text>
+        </view>
+      </view>
+
+      <!-- 预算金额 -->
+      <view class="section">
+        <text class="section-title">预算金额</text>
+        <view class="budget-input-wrapper">
+          <text class="currency">¥</text>
+          <input 
+            class="budget-input" 
+            type="digit"
+            v-model="formData.budget" 
+            placeholder="1500"
+            placeholder-class="input-placeholder"
+          />
+        </view>
+        <view class="tip">
+          <view class="tip-dot"></view>
+          <text class="tip-text">参考:同类服务平均价格 ¥1200-2000</text>
+        </view>
+      </view>
+
+      <!-- 需求说明 -->
+      <view class="section">
+        <text class="section-title">需求说明</text>
+        <view class="description-wrapper">
+          <textarea 
+            class="description-textarea" 
+            v-model="formData.description" 
+            placeholder="智慧园区监控系统出现部分摄像头离线,需要排查网络连接问题并修复。涉及约20个点位,需要携带网络测试工具。"
+            placeholder-class="input-placeholder"
+            maxlength="500"
+          />
+          <text class="edit-icon">✏️</text>
+        </view>
+      </view>
+
+      <!-- 底部操作栏 -->
+      <view class="footer-section">
+        <view class="agreement">
+          <checkbox-group @change="onAgreementChange">
+            <label class="agreement-label">
+              <checkbox :checked="formData.agreed" color="#E53935" />
+              <text class="agreement-text">阅读并同意《电子运单契约条款》</text>
+            </label>
+          </checkbox-group>
+        </view>
+        
+        <view class="price-info">
+          <text class="price-label">预估总价</text>
+          <text class="price-value">¥ -- 明细</text>
+        </view>
+        
+        <view class="action-buttons">
+          <button class="save-draft-btn" @click="saveDraft">
+            <text class="draft-icon">💾</text>
+            <text>保存草稿</text>
+          </button>
+          <button class="next-btn" :class="{ disabled: !canNext }" @click="handleNext">
+            下一步
+          </button>
+        </view>
+      </view>
+
+      <!-- 占位 -->
+      <view style="height: 100rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+const formData = ref({
+  serviceType: 1, // 默认选中找售后
+  problemTypes: [] as number[],
+  initiateOrder: true,
+  distributionMode: 'auto' as 'auto' | 'assign',
+  serviceMethod: 'onsite' as 'online' | 'onsite',
+  address: {
+    name: '扬州市智慧园区',
+    detail: '江苏省扬州市邗江区文昌西路456号',
+    contact: '王经理 138****8888'
+  },
+  serviceDateTime: '2025-11-10 14:00',
+  endServiceDateTime: '2025-11-11 18:00',
+  budget: '1500',
+  description: '智慧园区监控系统出现部分摄像头离线,需要排查网络连接问题并修复。涉及约20个点位,需要携带网络测试工具。',
+  agreed: false
+})
+
+// 当前服务名称，从首页传递过来
+const currentServiceName = ref('')
+
+const serviceTypes = ref([
+  { 
+    value: 1, 
+    name: '找售后', 
+    desc: '维护保养',
+    detail: '设备故障维修、日常保养、系统调试等售后服务',
+    icon: '/static/icon-png-home/扳手.png'
+  },
+  { 
+    value: 2, 
+    name: '找售前', 
+    desc: '安装调试',
+    detail: '现场踏勘、方案设计、技术交流等售前支持',
+    icon: '/static/icons/货车.png'
+  },
+  { 
+    value: 3, 
+    name: '售后工程', 
+    desc: '工程项目',
+    detail: '售后工程项目实施、系统集成、设备安装等',
+    icon: '/static/icons/团队.png'
+  },
+  { 
+    value: 4, 
+    name: '团队服务', 
+    desc: '服务支持',
+    detail: '技术支持、远程协助、定期巡检等团队服务',
+    icon: '/static/icons/customer-service.png'
+  }
+])
+
+// 不同服务类型对应的问题类型
+const problemTypeMap: any = {
+  1: [ // 找售后
+    { name: '软件平台问题', selected: false },
+    { name: '数据对接问题', selected: false },
+    { name: '前端问题（频闪灯/爆闪灯/相机/雷视一体机/信号机/广播/音响/充电桩等）', selected: false },
+    { name: '网络问题', selected: false },
+    { name: '综合类问题', selected: false },
+    { name: '培训', selected: false },
+    { name: '其他', selected: false }
+  ],
+  2: [ // 找售前
+    { name: '前期局点踏勘', selected: false },
+    { name: '政企项目前期出方案', selected: false },
+    { name: '弱电及数字化工程量核算', selected: false },
+    { name: '技术交流与汇报', selected: false },
+    { name: '其他', selected: false }
+  ],
+  3: [ // 售后工程
+    { name: '安装调试', selected: false }
+  ],
+  4: [ // 团队服务
+    { name: '售前+售后', selected: false }
+  ]
+}
+
+const problemTypes = ref([
+  { name: '软件平台问题', selected: false },
+  { name: '数据对接问题', selected: false },
+  { name: '前端问题（频闪灯/爆闪灯/相机/雷视一体机/信号机/广播/音响/充电桩等）', selected: false },
+  { name: '网络问题', selected: false },
+  { name: '综合类问题', selected: false },
+  { name: '培训', selected: false },
+  { name: '其他', selected: false }
+])
+
+
+// 日期时间选择器数据
+const serviceDate = ref('2025-11-10')
+const serviceTime = ref('14:00')
+const endServiceDate = ref('2025-11-11')
+const endServiceTime = ref('18:00')
+
+// 更新问题类型列表
+function updateProblemTypes() {
+  const types = problemTypeMap[formData.value.serviceType] || problemTypeMap[1]
+  // 更新问题类型列表（深拷贝）
+  problemTypes.value = types.map((item: any) => ({ ...item }))
+  // 重置问题类型选择
+  formData.value.problemTypes = []
+  // 默认选中第一个问题类型
+  if (problemTypes.value.length > 0) {
+    problemTypes.value[0].selected = true
+    formData.value.problemTypes = [0]
+  }
+}
+
+// 初始化日期时间
+onMounted(() => {
+  // 初始化日期时间
+  formData.value.serviceDateTime = `${serviceDate.value} ${serviceTime.value}`
+  formData.value.endServiceDateTime = `${endServiceDate.value} ${endServiceTime.value}`
+  
+  // 默认选中第一个问题类型
+  updateProblemTypes()
+  
+  // 获取URL参数中的服务名称
+  const pages = getCurrentPages()
+  if (pages.length > 0) {
+    const currentPage = pages[pages.length - 1]
+    const options = currentPage.options
+    if (options.service_name) {
+      currentServiceName.value = decodeURIComponent(options.service_name)
+    }
+  }
+})
+
+// 是否可以下一步
+const canNext = computed(() => {
+  return formData.value.serviceType &&
+         formData.value.problemTypes.length > 0 &&
+         formData.value.initiateOrder !== null &&
+         formData.value.distributionMode &&
+         formData.value.serviceMethod &&
+         formData.value.serviceDateTime &&
+         formData.value.endServiceDateTime &&
+         formData.value.budget &&
+         formData.value.description &&
+         formData.value.agreed
+})
+
+
+// 返回
+function goBack() {
+  uni.navigateBack()
+}
+
+// 选择服务类型
+function selectServiceType(type: number) {
+  formData.value.serviceType = type
+  // 切换服务类型时，重置并更新问题类型
+  updateProblemTypes()
+}
+
+// 切换问题类型
+function toggleProblemType(index: number) {
+  problemTypes.value[index].selected = !problemTypes.value[index].selected
+  formData.value.problemTypes = problemTypes.value
+    .map((item, idx) => item.selected ? idx : -1)
+    .filter(idx => idx !== -1)
+}
+
+// 选择是否发起工单
+function selectInitiateOrder(value: boolean) {
+  formData.value.initiateOrder = value
+}
+
+// 选择工单分发模式
+function selectDistributionMode(mode: 'auto' | 'assign') {
+  formData.value.distributionMode = mode
+}
+
+// 选择服务方式
+function selectServiceMethod(method: 'online' | 'onsite') {
+  formData.value.serviceMethod = method
+}
+
+// 选择地址
+function chooseAddress() {
+  uni.showModal({
+    title: '提示',
+    content: '地址选择功能开发中，V2版本将支持地图选点',
+    showCancel: false
+  })
+}
+
+// 日期改变
+function onDateChange(e: any) {
+  serviceDate.value = e.detail.value
+  formData.value.serviceDateTime = `${e.detail.value} ${serviceTime.value}`
+}
+
+// 时间改变
+function onTimeChange(e: any) {
+  serviceTime.value = e.detail.value
+  formData.value.serviceDateTime = `${serviceDate.value} ${e.detail.value}`
+}
+
+// 结束服务日期改变
+function onEndDateChange(e: any) {
+  endServiceDate.value = e.detail.value
+  formData.value.endServiceDateTime = `${e.detail.value} ${endServiceTime.value}`
+}
+
+// 结束服务时间改变
+function onEndTimeChange(e: any) {
+  endServiceTime.value = e.detail.value
+  formData.value.endServiceDateTime = `${endServiceDate.value} ${e.detail.value}`
+}
+
+// 协议改变
+function onAgreementChange(e: any) {
+  formData.value.agreed = e.detail.value.length > 0
+}
+
+// 保存草稿
+function saveDraft() {
+  uni.showLoading({ title: '保存中...' })
+  
+  // TODO: 保存草稿到本地存储或后端
+  setTimeout(() => {
+    uni.hideLoading()
+    uni.showToast({
+      title: '草稿已保存',
+      icon: 'success'
+    })
+  }, 500)
+}
+
+// 下一步
+function handleNext() {
+  if (!canNext.value) {
+    uni.showToast({
+      title: '请完善必填信息',
+      icon: 'none'
+    })
+    return
+  }
+
+  // TODO: 跳转到下一步页面或提交
+  uni.showToast({
+    title: '功能开发中',
+    icon: 'none'
+  })
+  
+  // 示例：跳转到确认页面
+  // uni.navigateTo({
+  //   url: '/pages/service/confirm'
+  // })
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background: #FFFFFF;
+  padding: calc(env(safe-area-inset-top) + 20rpx) 32rpx 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.nav-back {
+  font-size: 44rpx;
+  color: #333;
+  width: 80rpx;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-placeholder {
+  width: 80rpx;
+}
+
+// 服务类型导航栏
+.service-nav {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  padding: 20rpx 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-nav-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-align: center;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+.section {
+  background: #FFFFFF;
+  margin: 24rpx 32rpx 0;
+  padding: 32rpx;
+  padding-top: 48rpx;
+  padding-right: 48rpx;
+  border-radius: 16rpx;
+  overflow: visible;
+  position: relative;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24rpx;
+  display: block;
+}
+
+.optional {
+  font-weight: 400;
+  color: #999;
+  font-size: 28rpx;
+}
+
+// 服务类型选择
+.service-type-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.service-type-card {
+  border: 2rpx solid #E0E0E0;
+  border-radius: 16rpx;
+  padding: 24rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: visible;
+  
+  &.active {
+    border-color: #E53935;
+    background-color: #FFF5F5;
+  }
+}
+
+.card-header {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.service-icon {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.check-mark {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background-color: #E53935;
+  border-radius: 50%;
+  color: #FFFFFF;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  z-index: 10;
+  border: 2rpx solid #FFFFFF;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+}
+
+.service-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6rpx;
+}
+
+.service-desc {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.service-detail {
+  font-size: 22rpx;
+  color: #999;
+  text-align: center;
+  line-height: 1.4;
+}
+
+// 问题类型
+.problem-type-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.problem-type-item {
+  padding: 20rpx 32rpx;
+  border: 2rpx solid #E0E0E0;
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+  
+  &.active {
+    border-color: #E53935;
+    background-color: #FFF5F5;
+  }
+}
+
+.problem-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+// 选项组
+.option-group {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.option-item {
+  flex: 1;
+  padding: 24rpx;
+  border: 2rpx solid #E0E0E0;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+  
+  &.active {
+    border-color: #E53935;
+    background-color: #FFF5F5;
+  }
+}
+
+.option-text {
+  font-size: 28rpx;
+  color: #333;
+}
+
+// 提示信息
+.tip {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8rpx;
+  margin-top: 16rpx;
+}
+
+.tip-dot {
+  width: 8rpx;
+  height: 8rpx;
+  background-color: #FF9800;
+  border-radius: 50%;
+  margin-top: 10rpx;
+  flex-shrink: 0;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #999;
+  line-height: 1.5;
+  flex: 1;
+}
+
+// 地址卡片
+.address-card {
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.address-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.address-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.address-detail {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.address-contact {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.arrow {
+  font-size: 44rpx;
+  color: #999;
+  margin-left: 16rpx;
+}
+
+// 日期时间选择器
+.datetime-picker-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.picker-card {
+  flex: 1;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.calendar-icon {
+  font-size: 32rpx;
+}
+
+.picker-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+
+// 预算输入
+.budget-input-wrapper {
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.currency {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.budget-input {
+  flex: 1;
+  font-size: 32rpx;
+  color: #333;
+}
+
+.input-placeholder {
+  color: #BDBDBD;
+}
+
+// 需求说明
+.description-wrapper {
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  position: relative;
+}
+
+.description-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  
+}
+
+.edit-icon {
+  position: absolute;
+  bottom: 16rpx;
+  right: 16rpx;
+  font-size: 32rpx;
+}
+
+// 底部操作栏
+.footer-section {
+  background: #FFFFFF;
+  margin-top: 32rpx;
+  padding: 32rpx;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.agreement {
+  margin-bottom: 24rpx;
+}
+
+.agreement-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.agreement-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.price-info {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.price-label {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.price-value {
+  font-size: 28rpx;
+  color: #E53935;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.save-draft-btn {
+  flex: 1;
+  background-color: #FFFFFF;
+  border: 2rpx solid #E0E0E0;
+  border-radius: 48rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.draft-icon {
+  font-size: 28rpx;
+}
+
+.next-btn {
+  flex: 2;
+  background: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 48rpx;
+  padding: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  box-shadow: 0 8rpx 24rpx rgba(244, 67, 54, 0.3);
+  
+  &.disabled {
+    background: #BDBDBD;
+    box-shadow: none;
+    opacity: 0.6;
+  }
+}
+</style>
+

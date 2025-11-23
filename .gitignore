@@ -1,0 +1,43 @@
+# 编译输出
+/unpackage/
+/dist/
+
+# 缓存文件
+/node_modules/
+/.hbuilderx/
+/.idea/
+/.vscode/
+*.log
+*.cache
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.bak
+*~
+
+# 私有配置
+project.private.config.json
+/config/private.js
+
+# 环境变量
+.env.local
+.env.*.local
+
+# 测试覆盖率
+/coverage/
+
+# 备份文件
+*_backup.*
+*.backup
+
+# 编辑器配置（可选，团队协作时保留）
+# .vscode/
+# .idea/
+

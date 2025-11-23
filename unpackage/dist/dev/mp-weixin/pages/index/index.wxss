@@ -113,3 +113,59 @@
   color: #ffffff;
   border: 2rpx solid rgba(255, 255, 255, 0.4);
 }
+
+/* 模拟登录样式 */
+.mock-login-section.data-v-00a60067 {
+  width: 100%;
+  margin-top: 60rpx;
+  padding-top: 40rpx;
+}
+.mock-divider.data-v-00a60067 {
+  position: relative;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+.mock-divider.data-v-00a60067::before,
+.mock-divider.data-v-00a60067::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.mock-divider.data-v-00a60067::before {
+  left: 0;
+}
+.mock-divider.data-v-00a60067::after {
+  right: 0;
+}
+.divider-text.data-v-00a60067 {
+  display: inline-block;
+  padding: 0 20rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  background-color: transparent;
+}
+.mock-buttons.data-v-00a60067 {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.btn.mock.data-v-00a60067 {
+  height: 80rpx;
+  font-size: 28rpx;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+.btn.mock.customer.data-v-00a60067 {
+  border-left: 6rpx solid #4CAF50;
+}
+.btn.mock.engineer.data-v-00a60067 {
+  border-left: 6rpx solid #FF9800;
+}
+.btn.mock.data-v-00a60067:active {
+  opacity: 0.7;
+}

@@ -1,0 +1,223 @@
+<template>
+  <view class="tab-bar" :style="{ paddingBottom: safeAreaBottom }">
+    <view 
+      class="tab-item" 
+      :class="{ active: currentPage === 'home' }"
+      @click="handleTabClick('home')"
+    >
+      <image 
+        class="tab-icon" 
+        :src="currentPage === 'home' ? '/static/icons/home-active.png' : '/static/icons/home.png'" 
+        mode="aspectFit"
+      />
+      <text class="tab-label">首页</text>
+    </view>
+    
+    <view 
+      class="tab-item" 
+      :class="{ active: currentPage === 'order' }"
+      @click="handleTabClick('order')"
+    >
+      <image 
+        class="tab-icon" 
+        :src="currentPage === 'order' ? '/static/icons/order-active.png' : '/static/icons/order.png'" 
+        mode="aspectFit"
+      />
+      <text class="tab-label">订单</text>
+      <view v-if="orderBadge > 0" class="tab-badge">
+        <text>{{ orderBadge > 99 ? '99+' : orderBadge }}</text>
+      </view>
+    </view>
+    
+    <view class="tab-fab" @click="handleFabClick">
+      <view class="fab-button">
+        <text class="fab-icon">+</text>
+      </view>
+    </view>
+    
+    <view 
+      class="tab-item" 
+      :class="{ active: currentPage === 'message' }"
+      @click="handleTabClick('message')"
+    >
+      <image 
+        class="tab-icon" 
+        :src="currentPage === 'message' ? '/static/icons/message-active.png' : '/static/icons/message.png'" 
+        mode="aspectFit"
+      />
+      <text class="tab-label">消息</text>
+      <view v-if="messageBadge > 0" class="tab-badge">
+        <text>{{ messageBadge > 99 ? '99+' : messageBadge }}</text>
+      </view>
+    </view>
+    
+    <view 
+      class="tab-item" 
+      :class="{ active: currentPage === 'profile' }"
+      @click="handleTabClick('profile')"
+    >
+      <image 
+        class="tab-icon" 
+        :src="currentPage === 'profile' ? '/static/icons/profile-active.png' : '/static/icons/profile.png'" 
+        mode="aspectFit"
+      />
+      <text class="tab-label">我的</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { ROUTES } from '../../config'
+
+// Props
+interface Props {
+  currentPage: 'home' | 'order' | 'message' | 'profile'
+  orderBadge?: number
+  messageBadge?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  orderBadge: 0,
+  messageBadge: 0
+})
+
+// 计算底部安全区域
+const safeAreaBottom = computed(() => {
+  return 'calc(56rpx + env(safe-area-inset-bottom))'
+})
+
+// Tab点击处理
+function handleTabClick(page: string) {
+  if (page === props.currentPage) {
+    return // 已经在当前页面
+  }
+  
+  const pageMap: Record<string, string> = {
+    'home': ROUTES.HOME,
+    'order': ROUTES.ORDER_LIST,
+    'message': ROUTES.MESSAGE,
+    'profile': ROUTES.PROFILE
+  }
+  
+  const targetUrl = pageMap[page]
+  if (targetUrl) {
+    uni.reLaunch({
+      url: targetUrl
+    })
+  }
+}
+
+// 悬浮按钮点击
+function handleFabClick() {
+  uni.navigateTo({
+    url: ROUTES.ORDER_CREATE
+  })
+}
+</script>
+
+<style scoped lang="scss">
+@import '@/styles/variables.scss';
+
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: $bg-primary;
+  border-top: 1rpx solid $border-light;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 8rpx 0 0;
+  height: 56rpx;
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+  overflow: visible;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex: 1;
+  position: relative;
+  color: $text-secondary;
+  
+  &.active {
+    color: $color-primary;
+    
+    .tab-label {
+      color: $color-primary;
+    }
+    
+    .tab-icon {
+      opacity: 1;
+    }
+  }
+  
+  &:not(.active) .tab-icon {
+    opacity: 0.5;
+  }
+}
+
+.tab-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.tab-label {
+  font-size: $font-xs;
+  color: $text-secondary;
+}
+
+.tab-badge {
+  position: absolute;
+  top: -4rpx;
+  right: 20rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  background-color: $color-danger;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-size: 20rpx;
+  color: $text-white;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 2rpx 8rpx rgba($color-danger, 0.3);
+}
+
+.tab-fab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-button {
+  width: 112rpx;
+  height: 112rpx;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba($color-primary, 0.4);
+  margin-top: -56rpx;
+  position: relative;
+  z-index: 1000;
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: $text-white;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-4rpx);
+}
+</style>

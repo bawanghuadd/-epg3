@@ -1,39 +1,64 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-function checkLogin() {
-  const token = common_vendor.index.getStorageSync("token");
-  return !!token;
-}
+const config_index = require("../config/index.js");
 function getToken() {
-  return common_vendor.index.getStorageSync("token") || "";
+  return common_vendor.index.getStorageSync(config_index.STORAGE_KEYS.TOKEN);
 }
-function saveLoginInfo(token, userInfo) {
-  common_vendor.index.setStorageSync("token", token);
-  common_vendor.index.setStorageSync("userInfo", userInfo);
+function setToken(token) {
+  common_vendor.index.setStorageSync(config_index.STORAGE_KEYS.TOKEN, token);
 }
-function getPhoneNumber(code) {
-  return common_vendor.__awaiter(this, void 0, void 0, function* () {
-    try {
-      const API_BASE_URL = "https://your-api-domain.com";
-      const res = yield common_vendor.index.request({
-        url: `${API_BASE_URL}/api/auth/phone-number`,
-        method: "POST",
-        data: {
-          code
-        },
-        header: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${getToken()}`
-        }
-      });
-      return res.data;
-    } catch (error) {
-      common_vendor.index.__f__("error", "at utils/auth.ts:144", "获取手机号失败:", error);
-      throw new Error("获取手机号失败");
-    }
+function removeToken() {
+  common_vendor.index.removeStorageSync(config_index.STORAGE_KEYS.TOKEN);
+}
+function isLoggedIn() {
+  return !!getToken();
+}
+function getUserInfo() {
+  return common_vendor.index.getStorageSync(config_index.STORAGE_KEYS.USER_INFO) || null;
+}
+function setUserInfo(userInfo) {
+  common_vendor.index.setStorageSync(config_index.STORAGE_KEYS.USER_INFO, userInfo);
+}
+function removeUserInfo() {
+  common_vendor.index.removeStorageSync(config_index.STORAGE_KEYS.USER_INFO);
+}
+function clearAuth() {
+  removeToken();
+  removeUserInfo();
+}
+function navigateToHome() {
+  const userInfo = getUserInfo();
+  const homeRoute = (userInfo == null ? void 0 : userInfo.user_type) === config_index.USER_TYPES.ENGINEER ? config_index.ROUTES.ENGINEER_HOME : config_index.ROUTES.HOME;
+  common_vendor.index.reLaunch({
+    url: homeRoute
   });
 }
-exports.checkLogin = checkLogin;
-exports.getPhoneNumber = getPhoneNumber;
-exports.saveLoginInfo = saveLoginInfo;
+function logout() {
+  return new Promise((resolve) => {
+    common_vendor.index.showModal({
+      title: "提示",
+      content: "确定要退出登录吗？",
+      success: (res) => {
+        if (res.confirm) {
+          clearAuth();
+          common_vendor.index.reLaunch({
+            url: config_index.ROUTES.LOGIN,
+            complete: () => {
+              resolve(true);
+            }
+          });
+        } else {
+          resolve(false);
+        }
+      }
+    });
+  });
+}
+exports.getToken = getToken;
+exports.getUserInfo = getUserInfo;
+exports.isLoggedIn = isLoggedIn;
+exports.logout = logout;
+exports.navigateToHome = navigateToHome;
+exports.setToken = setToken;
+exports.setUserInfo = setUserInfo;
 //# sourceMappingURL=../../.sourcemap/mp-weixin/utils/auth.js.map

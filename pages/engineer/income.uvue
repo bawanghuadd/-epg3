@@ -1,0 +1,648 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-title">我的收入</text>
+      <image class="chart-icon" src="/static/icons/service-query.png" mode="aspectFit" @click="showChart"></image>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 累计收入卡片 -->
+      <view class="income-card">
+        <text class="card-label">累计收入</text>
+        <view class="total-amount">
+          <text class="currency">¥</text>
+          <text class="amount">{{ totalIncome }}</text>
+          <text class="decimal">.00</text>
+        </view>
+        
+        <!-- 本月收入和待结算 -->
+        <view class="sub-stats">
+          <view class="stat-box">
+            <text class="stat-label">本月收入</text>
+            <text class="stat-value">¥{{ monthlyIncome }}</text>
+          </view>
+          <view class="stat-box">
+            <text class="stat-label">待结算</text>
+            <text class="stat-value">¥{{ pendingAmount }}</text>
+          </view>
+        </view>
+
+        <!-- 立即提现按钮 -->
+        <button class="withdraw-btn" @click="handleWithdraw">
+          <image class="btn-icon" src="/static/icons/wallet.png" mode="aspectFit"></image>
+          <text>立即提现</text>
+        </button>
+      </view>
+
+      <!-- 统计数据 -->
+      <view class="stats-section">
+        <view class="stat-item">
+          <text class="stat-number red">{{ completedOrders }}</text>
+          <text class="stat-text">完成订单</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-number green">{{ serviceScore }}</text>
+          <text class="stat-text">服务评分</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-number blue">{{ positiveRate }}</text>
+          <text class="stat-text">好评率</text>
+        </view>
+      </view>
+
+      <!-- 收入明细 -->
+      <view class="detail-section">
+        <view class="detail-header">
+          <text class="detail-title">收入明细</text>
+          <view class="filter-tabs">
+            <view 
+              class="filter-tab" 
+              :class="{ active: activeFilter === 'all' }"
+              @click="switchFilter('all')"
+            >
+              <text>全部</text>
+            </view>
+            <view 
+              class="filter-tab" 
+              :class="{ active: activeFilter === 'month' }"
+              @click="switchFilter('month')"
+            >
+              <text>本月</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 收入记录列表 -->
+        <view class="income-list">
+          <view class="income-item" v-for="(item, index) in filteredIncomeList" :key="index">
+            <view class="item-left">
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-order">订单号: {{ item.orderNo }}</text>
+              <text class="item-time">结算时间: {{ item.settleTime }}</text>
+              <text class="item-duration">用时: {{ item.duration }}</text>
+            </view>
+            <view class="item-right">
+              <text class="item-amount" :class="item.type === 'income' ? 'positive' : 'negative'">
+                {{ item.type === 'income' ? '+' : '-' }} ¥{{ item.amount }}
+              </text>
+              <view class="item-status" :class="'status-' + item.status">
+                <text>{{ item.statusText }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 占位，防止被底部导航遮挡 -->
+      <view style="height: 200rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item" @click="navigateTo('home')">
+        <image class="nav-icon" src="/static/icons/home.png" mode="aspectFit"></image>
+        <text class="nav-label">接单大厅</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('workorders')">
+        <image class="nav-icon" src="/static/icons/order.png" mode="aspectFit"></image>
+        <text class="nav-label">我的工单</text>
+      </view>
+      <view class="nav-item active" @click="navigateTo('income')">
+        <image class="nav-icon" src="/static/icons/wallet.png" mode="aspectFit"></image>
+        <text class="nav-label">收入</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('training')">
+        <image class="nav-icon" src="/static/icons/service-about.png" mode="aspectFit"></image>
+        <text class="nav-label">培训认证</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('profile')">
+        <image class="nav-icon" src="/static/icons/profile.png" mode="aspectFit"></image>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+// 收入数据
+const totalIncome = ref('18,450')
+const monthlyIncome = ref('2,450')
+const pendingAmount = ref('1,200')
+
+// 统计数据
+const completedOrders = ref(28)
+const serviceScore = ref('4.9')
+const positiveRate = ref('96%')
+
+// 筛选条件
+const activeFilter = ref('all')
+
+// 收入记录列表（模拟数据）
+const incomeList = ref([
+  {
+    id: 1,
+    title: '空调安装维修服务',
+    orderNo: '#20251105012',
+    settleTime: '2025-11-05 18:30',
+    duration: '8小时',
+    amount: '800',
+    type: 'income',
+    status: 'settled',
+    statusText: '已结算',
+    date: '2025-11-05'
+  },
+  {
+    id: 2,
+    title: '智能家居系统安装',
+    orderNo: '#20251104008',
+    settleTime: '2025-11-04 16:20',
+    duration: '3小时',
+    amount: '1,200',
+    type: 'income',
+    status: 'completed',
+    statusText: '已结算',
+    date: '2025-11-04'
+  },
+  {
+    id: 3,
+    title: '办公室网络布线',
+    orderNo: '#20251103015',
+    settleTime: '2025-11-03 14:00',
+    duration: '5小时',
+    amount: '1,200',
+    type: 'income',
+    status: 'pending',
+    statusText: '待结算',
+    date: '2025-11-03'
+  },
+  {
+    id: 4,
+    title: '监控系统安装',
+    orderNo: '#20251028005',
+    settleTime: '2025-10-28 12:00',
+    duration: '4小时',
+    amount: '950',
+    type: 'income',
+    status: 'settled',
+    statusText: '已结算',
+    date: '2025-10-28'
+  },
+  {
+    id: 5,
+    title: '网络设备维修',
+    orderNo: '#20251025012',
+    settleTime: '2025-10-25 17:30',
+    duration: '2小时',
+    amount: '600',
+    type: 'income',
+    status: 'settled',
+    statusText: '已结算',
+    date: '2025-10-25'
+  }
+])
+
+// 根据筛选条件过滤收入记录
+const filteredIncomeList = computed(() => {
+  if (activeFilter.value === 'month') {
+    // 获取当前月份
+    const currentMonth = new Date().getMonth() + 1
+    const currentYear = new Date().getFullYear()
+    
+    return incomeList.value.filter(item => {
+      const itemDate = new Date(item.date)
+      return itemDate.getMonth() + 1 === currentMonth && itemDate.getFullYear() === currentYear
+    })
+  }
+  return incomeList.value
+})
+
+onMounted(() => {
+  loadIncomeData()
+  loadStats()
+})
+
+// 加载收入数据
+function loadIncomeData() {
+  // TODO: 调用API获取收入数据
+  console.log('加载收入数据')
+}
+
+// 加载统计数据
+function loadStats() {
+  // TODO: 调用API获取统计数据
+  console.log('加载统计数据')
+}
+
+// 切换筛选条件
+function switchFilter(filter: string) {
+  activeFilter.value = filter
+}
+
+// 显示图表
+function showChart() {
+  uni.showToast({
+    title: '图表功能开发中',
+    icon: 'none'
+  })
+}
+
+// 立即提现
+function handleWithdraw() {
+  uni.showModal({
+    title: '提现',
+    content: `可提现金额：¥${totalIncome.value}`,
+    confirmText: '确认提现',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 跳转到提现页面
+        uni.showToast({
+          title: '提现功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 底部导航
+function navigateTo(page: string) {
+  if (page === 'income') {
+    return // 已经在收入页
+  }
+  
+  const pageMap: any = {
+    'home': '/pages/engineer/home',
+    'workorders': '/pages/engineer/workorders',
+    'training': '/pages/profile/profile', // TODO: 创建培训认证页面
+    'profile': '/pages/profile/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 20rpx 32rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.chart-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+/* 累计收入卡片 */
+.income-card {
+  margin: 24rpx 32rpx;
+  background: linear-gradient(135deg, #FFE5B4 0%, #FFD89B 100%);
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 4rpx 20rpx rgba(255, 200, 100, 0.3);
+}
+
+.card-label {
+  font-size: 28rpx;
+  color: #8B6914;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.total-amount {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin-bottom: 32rpx;
+}
+
+.currency {
+  font-size: 48rpx;
+  color: #8B4513;
+  font-weight: 700;
+  margin-right: 8rpx;
+}
+
+.amount {
+  font-size: 80rpx;
+  color: #8B4513;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.decimal {
+  font-size: 40rpx;
+  color: #8B4513;
+  font-weight: 700;
+  margin-left: 4rpx;
+}
+
+.sub-stats {
+  display: flex;
+  flex-direction: row;
+  gap: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.stat-box {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #8B6914;
+}
+
+.stat-value {
+  font-size: 36rpx;
+  color: #8B4513;
+  font-weight: 700;
+}
+
+.withdraw-btn {
+  width: 100%;
+  background-color: #8B4513;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  line-height: 1;
+}
+
+.btn-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+/* 统计数据 */
+.stats-section {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.stat-item {
+  flex: 1;
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.stat-number {
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-number.red {
+  color: #E53935;
+}
+
+.stat-number.green {
+  color: #4CAF50;
+}
+
+.stat-number.blue {
+  color: #2196F3;
+}
+
+.stat-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 收入明细 */
+.detail-section {
+  padding: 0 32rpx;
+}
+
+.detail-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.detail-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.filter-tabs {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  background-color: #fff;
+  border-radius: 40rpx;
+  padding: 4rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.filter-tab {
+  padding: 12rpx 32rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.filter-tab.active {
+  background-color: #E53935;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 收入记录列表 */
+.income-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.income-item {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.item-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.item-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4rpx;
+}
+
+.item-order {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.item-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.item-duration {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.item-amount {
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.item-amount.positive {
+  color: #4CAF50;
+}
+
+.item-amount.negative {
+  color: #E53935;
+}
+
+.item-status {
+  padding: 6rpx 16rpx;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.status-settled {
+  background-color: #E8F5E9;
+  color: #4CAF50;
+}
+
+.status-pending {
+  background-color: #FFF3E0;
+  color: #FF9800;
+}
+
+.status-completed {
+  background-color: #E3F2FD;
+  color: #2196F3;
+}
+
+// 底部导航栏
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8rpx 0;
+  padding-bottom: calc(8rpx + env(safe-area-inset-bottom));
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex: 1;
+}
+
+.bottom-nav .nav-item.active {
+  color: #E53935;
+}
+
+.bottom-nav .nav-item.active .nav-label {
+  color: #E53935;
+}
+
+.bottom-nav .nav-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.bottom-nav .nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.bottom-nav .nav-item:not(.active) .nav-icon {
+  opacity: 0.5;
+}
+
+.bottom-nav .nav-label {
+  font-size: 22rpx;
+  color: #666;
+}
+</style>
+

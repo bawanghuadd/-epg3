@@ -1,0 +1,281 @@
+<template>
+  <view class="mock-switch" v-if="show && isDev">
+    <view class="switch-trigger" @click="togglePanel">
+      <text class="trigger-icon">👤</text>
+    </view>
+    
+    <view class="switch-panel" v-if="panelVisible">
+      <view class="panel-header">
+        <text class="panel-title">切换测试账号</text>
+        <text class="close-btn" @click="togglePanel">✕</text>
+      </view>
+      
+      <scroll-view class="user-list" scroll-y>
+        <view 
+          v-for="user in mockUsers" 
+          :key="user.key"
+          class="user-item"
+          :class="{ active: currentUserId === user.id }"
+          @click="switchUser(user.key)"
+        >
+          <image class="user-avatar" :src="user.avatar" mode="aspectFill"></image>
+          <view class="user-info">
+            <view class="user-name">
+              <text class="name">{{ user.nickname }}</text>
+              <text class="badge" :class="user.user_type">
+                {{ user.user_type === 'customer' ? '客户' : '工程师' }}
+              </text>
+            </view>
+            <text class="user-phone">{{ user.phone }}</text>
+            <text class="user-status" v-if="user.is_verified">
+              ✓ 已认证
+            </text>
+          </view>
+        </view>
+      </scroll-view>
+      
+      <view class="panel-footer">
+        <text class="tip">* 开发环境专用</text>
+      </view>
+    </view>
+    
+    <view class="mask" v-if="panelVisible" @click="togglePanel"></view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { getMockUserList, switchMockUser, isMockLogin } from '../../utils/mock-login'
+import { getUserInfo } from '../../utils/auth'
+
+// 属性
+interface Props {
+  show?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  show: true
+})
+
+// 是否为开发环境
+const isDev = ref(true)
+
+// 面板是否可见
+const panelVisible = ref(false)
+
+// 模拟用户列表
+const mockUsers = ref<any[]>([])
+
+// 当前用户ID
+const currentUserId = computed(() => {
+  const userInfo = getUserInfo()
+  return userInfo?.id || ''
+})
+
+// 切换面板显示
+function togglePanel() {
+  panelVisible.value = !panelVisible.value
+}
+
+// 切换用户
+async function switchUser(userKey: string) {
+  try {
+    await switchMockUser(userKey)
+    togglePanel()
+  } catch (error: any) {
+    console.error('切换用户失败:', error)
+    uni.showToast({
+      title: '切换失败',
+      icon: 'none'
+    })
+  }
+}
+
+onMounted(() => {
+  // 只在模拟登录状态下显示
+  if (isMockLogin()) {
+    mockUsers.value = getMockUserList()
+  } else {
+    isDev.value = false
+  }
+})
+</script>
+
+<style scoped lang="scss">
+.mock-switch {
+  position: fixed;
+  z-index: 9999;
+}
+
+.switch-trigger {
+  position: fixed;
+  bottom: 200rpx;
+  right: 30rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.trigger-icon {
+  font-size: 40rpx;
+}
+
+.switch-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  background-color: #ffffff;
+  border-radius: 40rpx 40rpx 0 0;
+  box-shadow: 0 -4rpx 40rpx rgba(0, 0, 0, 0.1);
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 40rpx 40rpx 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.panel-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  color: #999;
+  line-height: 60rpx;
+  text-align: center;
+}
+
+.user-list {
+  flex: 1;
+  padding: 20rpx 0;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 40rpx;
+  margin: 0 20rpx 20rpx;
+  border-radius: 20rpx;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.user-item.active {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border: 2rpx solid #667eea;
+}
+
+.user-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.user-name {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.badge {
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  color: #fff;
+}
+
+.badge.customer {
+  background-color: #4CAF50;
+}
+
+.badge.engineer {
+  background-color: #FF9800;
+}
+
+.user-phone {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.user-status {
+  font-size: 24rpx;
+  color: #4CAF50;
+}
+
+.panel-footer {
+  padding: 30rpx 40rpx;
+  border-top: 1rpx solid #f0f0f0;
+  text-align: center;
+}
+
+.tip {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+</style>
+

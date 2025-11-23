@@ -156,6 +156,24 @@
         </view>
       </view>
 
+      <!-- 开发工具入口（仅开发环境） -->
+      <view class="section" v-if="showDevTools">
+        <view class="section-title">
+          <text class="title-icon">🛠</text>
+          <text class="title-text">开发工具</text>
+        </view>
+        <view class="menu-list">
+          <view class="menu-item dev-item" @click="goToMockLoginDemo">
+            <view class="menu-icon purple">
+              <text class="menu-icon-emoji">👤</text>
+            </view>
+            <text class="menu-text">模拟登录测试</text>
+            <text class="menu-badge">DEV</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 占位 -->
       <view style="height: 180rpx;"></view>
     </scroll-view>
@@ -183,11 +201,16 @@
         <text class="nav-label">我的</text>
       </view>
     </view>
+    
+    <!-- 模拟用户切换 -->
+    <MockUserSwitch />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import MockUserSwitch from '../../components/MockUserSwitch/MockUserSwitch.uvue'
+import { isMockLogin } from '../../utils/mock-login'
 
 const userInfo = ref({
   id: 'CU10086',
@@ -202,6 +225,9 @@ const stats = ref({
   points: '2,680'
 })
 
+// 是否显示开发工具（仅模拟登录时显示）
+const showDevTools = ref(false)
+
 const orderCounts = ref({
   pending: 3,
   inService: 1,
@@ -214,6 +240,8 @@ onMounted(() => {
   loadUserInfo()
   loadStats()
   loadOrderCounts()
+  // 检查是否显示开发工具
+  showDevTools.value = isMockLogin()
 })
 
 function loadUserInfo() {
@@ -259,6 +287,13 @@ function goToOrders(status?: string) {
       url: '/pages/order/order'
     })
   }
+}
+
+// 跳转到模拟登录测试页面
+function goToMockLoginDemo() {
+  uni.navigateTo({
+    url: '/pages/test/mock-login-demo'
+  })
 }
 
 function handleMenuClick(type: string) {
@@ -664,6 +699,30 @@ function navigateTo(page: string) {
 .menu-arrow {
   font-size: 44rpx;
   color: #D9D9D9;
+}
+
+/* 开发工具样式 */
+.dev-item {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border-left: 4rpx solid #667eea;
+}
+
+.menu-icon.purple {
+  background-color: #EDE7F6;
+}
+
+.menu-icon-emoji {
+  font-size: 36rpx;
+}
+
+.menu-badge {
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background-color: #667eea;
+  margin-left: 12rpx;
+  font-weight: 600;
 }
 
 // 底部导航栏

@@ -1,6 +1,11 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const common_assets = require("../../common/assets.js");
+const utils_mockLogin = require("../../utils/mock-login.js");
+if (!Math) {
+  common_vendor.unref(MockUserSwitch)();
+}
+const MockUserSwitch = () => "../../components/MockUserSwitch/MockUserSwitch.js";
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "profile",
   setup(__props) {
@@ -15,6 +20,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       coupons: 5,
       points: "2,680"
     }));
+    const showDevTools = common_vendor.ref(false);
     const orderCounts = common_vendor.ref(new UTSJSONObject({
       pending: 3,
       inService: 1,
@@ -24,6 +30,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     }));
     common_vendor.onMounted(() => {
       loadUserInfo();
+      showDevTools.value = utils_mockLogin.isMockLogin();
     });
     function loadUserInfo() {
       const info = common_vendor.index.getStorageSync("userInfo");
@@ -52,6 +59,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           url: "/pages/order/order"
         });
       }
+    }
+    function goToMockLoginDemo() {
+      common_vendor.index.navigateTo({
+        url: "/pages/test/mock-login-demo"
+      });
     }
     function handleMenuClick(type) {
       const routes = new UTSJSONObject({
@@ -112,7 +124,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         i: common_vendor.t(stats.value.coupons),
         j: common_vendor.t(stats.value.points),
         k: common_vendor.o(goToOrders),
-        l: common_assets._imports_0$2,
+        l: common_assets._imports_2$3,
         m: orderCounts.value.pending > 0
       }, orderCounts.value.pending > 0 ? {
         n: common_vendor.t(orderCounts.value.pending)
@@ -120,7 +132,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         o: common_vendor.o(($event) => {
           return goToOrders("pending");
         }),
-        p: common_assets._imports_1$2,
+        p: common_assets._imports_1$3,
         q: orderCounts.value.inService > 0
       }, orderCounts.value.inService > 0 ? {
         r: common_vendor.t(orderCounts.value.inService)
@@ -136,11 +148,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         x: common_vendor.o(($event) => {
           return goToOrders("toRate");
         }),
-        y: common_assets._imports_4$1,
+        y: common_assets._imports_4$2,
         z: common_vendor.o(($event) => {
           return handleMenuClick("address");
         }),
-        A: common_assets._imports_5,
+        A: common_assets._imports_5$1,
         B: common_vendor.o(($event) => {
           return handleMenuClick("favorite");
         }),
@@ -172,28 +184,32 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         P: common_vendor.o(($event) => {
           return handleMenuClick("about");
         }),
-        Q: common_assets._imports_12,
-        R: common_vendor.o(($event) => {
+        Q: showDevTools.value
+      }, showDevTools.value ? {
+        R: common_vendor.o(goToMockLoginDemo)
+      } : {}, {
+        S: common_assets._imports_2,
+        T: common_vendor.o(($event) => {
           return navigateTo("home");
         }),
-        S: common_assets._imports_13,
-        T: orderCounts.value.total > 0
+        U: common_assets._imports_3,
+        V: orderCounts.value.total > 0
       }, orderCounts.value.total > 0 ? {
-        U: common_vendor.t(orderCounts.value.total)
+        W: common_vendor.t(orderCounts.value.total)
       } : {}, {
-        V: common_vendor.o(($event) => {
+        X: common_vendor.o(($event) => {
           return navigateTo("order");
         }),
-        W: common_vendor.o(handleFabClick),
-        X: common_assets._imports_14,
-        Y: common_vendor.o(($event) => {
+        Y: common_vendor.o(handleFabClick),
+        Z: common_assets._imports_1$2,
+        aa: common_vendor.o(($event) => {
           return navigateTo("message");
         }),
-        Z: common_assets._imports_15,
-        aa: common_vendor.o(($event) => {
+        ab: common_assets._imports_15,
+        ac: common_vendor.o(($event) => {
           return navigateTo("profile");
         }),
-        ab: common_vendor.sei(common_vendor.gei(_ctx, ""), "view")
+        ad: common_vendor.sei(common_vendor.gei(_ctx, ""), "view")
       });
       return __returned__;
     };

@@ -55,6 +55,54 @@
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/service/presales",
+			"style": {
+				"navigationBarTitleText": "发布需求",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/service/aftersales",
+			"style": {
+				"navigationBarTitleText": "发布需求",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/engineer/home",
+			"style": {
+				"navigationBarTitleText": "接单大厅",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/engineer/workorders",
+			"style": {
+				"navigationBarTitleText": "我的工单",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/engineer/income",
+			"style": {
+				"navigationBarTitleText": "我的收入",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/test/mock-login-demo",
+			"style": {
+				"navigationBarTitleText": "模拟登录测试",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {

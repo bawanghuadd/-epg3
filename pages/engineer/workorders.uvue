@@ -1,0 +1,758 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-title">我的工单</text>
+      <image class="search-icon" src="/static/icons/service-query.png" mode="aspectFit" @click="handleSearch"></image>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 状态标签 -->
+      <scroll-view scroll-x class="tabs-scroll">
+        <view class="tabs">
+          <view 
+            class="tab-item" 
+            :class="{ active: activeTab === index }"
+            v-for="(tab, index) in tabs" 
+            :key="index"
+            @click="switchTab(index)"
+          >
+            <text class="tab-text">{{ tab.name }}</text>
+            <view class="tab-badge" v-if="tab.count > 0">
+              <text>{{ tab.count > 99 ? '99+' : tab.count }}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 工单列表 -->
+      <view class="workorder-list">
+        <!-- 空状态 -->
+        <view class="empty-state" v-if="filteredWorkorders.length === 0">
+          <text class="empty-icon">📋</text>
+          <text class="empty-text">暂无工单</text>
+        </view>
+
+        <!-- 工单卡片 -->
+        <view class="workorder-card" v-for="(workorder, index) in filteredWorkorders" :key="index">
+          <!-- 订单号和状态标签 -->
+          <view class="card-header">
+            <text class="order-number">订单号: {{ workorder.orderNo }}</text>
+            <view class="status-badge" :class="'status-' + workorder.status">
+              <text>{{ workorder.statusText }}</text>
+            </view>
+          </view>
+
+          <!-- 服务标题 -->
+          <text class="service-title">{{ workorder.title }}</text>
+
+          <!-- 位置信息 -->
+          <view class="info-row">
+            <image class="info-icon" src="/static/icons/address.png" mode="aspectFit"></image>
+            <text class="info-text">{{ workorder.address }}</text>
+          </view>
+
+          <!-- 时间信息 -->
+          <view class="info-row">
+            <image class="info-icon" src="/static/icon-png-profile/时间 钟表.png" mode="aspectFit"></image>
+            <text class="info-text">{{ workorder.time }}</text>
+          </view>
+
+          <!-- 进度条（仅进行中状态显示） -->
+          <view class="progress-section" v-if="workorder.status === 'in_progress' && workorder.progress !== undefined">
+            <view class="progress-header">
+              <text class="progress-label">{{ workorder.progressType || '服务进度' }}</text>
+              <text class="progress-percent">{{ workorder.progress }}%</text>
+            </view>
+            <view class="progress-bar">
+              <view class="progress-fill" :style="{ width: workorder.progress + '%' }"></view>
+            </view>
+            <!-- 进度详情 -->
+            <view class="progress-details" v-if="workorder.progressDetails">
+              <view class="progress-item" v-for="(detail, idx) in workorder.progressDetails" :key="idx">
+                <view class="progress-icon" :class="detail.completed ? 'completed' : 'pending'">
+                  <text v-if="detail.completed">✓</text>
+                  <text v-else>×</text>
+                </view>
+                <text class="progress-text">{{ detail.text }}</text>
+              </view>
+            </view>
+            <!-- 项目进度额外信息 -->
+            <text class="progress-info" v-if="workorder.progressInfo">{{ workorder.progressInfo }}</text>
+          </view>
+
+          <!-- 费用信息 -->
+          <view class="price-section">
+            <text class="price-label">{{ workorder.priceType || '服务费用' }}</text>
+            <text class="price-value">¥{{ workorder.price }}</text>
+          </view>
+
+          <!-- 操作按钮 -->
+          <view class="action-buttons">
+            <button 
+              class="action-btn secondary" 
+              v-if="workorder.actions.contact"
+              @click="handleContact(workorder)"
+            >
+              <text>{{ workorder.actions.contact }}</text>
+            </button>
+            <button 
+              class="action-btn secondary" 
+              v-if="workorder.actions.message"
+              @click="handleMessage(workorder)"
+            >
+              <text>{{ workorder.actions.message }}</text>
+            </button>
+            <button 
+              class="action-btn primary" 
+              @click="handleViewDetail(workorder)"
+            >
+              <text>查看详情</text>
+            </button>
+          </view>
+        </view>
+      </view>
+
+      <!-- 占位，防止被底部导航遮挡 -->
+      <view style="height: 200rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item" @click="navigateTo('home')">
+        <image class="nav-icon" src="/static/icons/home.png" mode="aspectFit"></image>
+        <text class="nav-label">接单大厅</text>
+      </view>
+      <view class="nav-item active" @click="navigateTo('workorders')">
+        <image class="nav-icon" src="/static/icons/order-active.png" mode="aspectFit"></image>
+        <text class="nav-label">我的工单</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('income')">
+        <image class="nav-icon" src="/static/icons/wallet.png" mode="aspectFit"></image>
+        <text class="nav-label">收入</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('training')">
+        <image class="nav-icon" src="/static/icons/service-about.png" mode="aspectFit"></image>
+        <text class="nav-label">培训认证</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('profile')">
+        <image class="nav-icon" src="/static/icons/profile.png" mode="aspectFit"></image>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+const activeTab = ref(0)
+
+// 工单状态Tab
+const tabs = ref([
+  { name: '进行中', status: 'in_progress', count: 3 },
+  { name: '待确认', status: 'pending_confirm', count: 2 },
+  { name: '待验收', status: 'pending_accept', count: 1 },
+  { name: '已完成', status: 'completed', count: 28 }
+])
+
+// 工单列表（模拟数据，根据图片描述）
+const workorders = ref([
+  {
+    id: 1,
+    orderNo: '#20251107001',
+    status: 'in_progress',
+    statusText: '进行中',
+    title: '空调安装维修服务',
+    address: '北京市朝阳区望京SOHO T3座',
+    time: '今天 09:00 - 18:00',
+    progress: 60,
+    progressType: '服务进度',
+    progressDetails: [
+      { text: '已签到', completed: true },
+      { text: '服务中', completed: false }
+    ],
+    price: '800',
+    priceType: '服务费用',
+    actions: {
+      contact: '联系客户',
+      message: null
+    }
+  },
+  {
+    id: 2,
+    orderNo: '#20251106023',
+    status: 'in_progress',
+    statusText: '进行中',
+    title: '办公室网络布线改造',
+    address: '北京市海淀区中关村软件园',
+    time: '2025-11-06 至 2025-11-09',
+    progress: 40,
+    progressType: '项目进度',
+    progressInfo: '第2天·预计还需2天完成',
+    price: '5,000',
+    priceType: '项目总额',
+    actions: {
+      contact: null,
+      message: '消息'
+    }
+  },
+  {
+    id: 3,
+    orderNo: '#20251105018',
+    status: 'in_progress',
+    statusText: '进行中',
+    title: '智能家居系统安装调试',
+    address: '北京市东城区东直门',
+    time: '2025-11-05 10:00 - 16:00',
+    progress: 30,
+    progressType: '服务进度',
+    progressDetails: [
+      { text: '已签到', completed: true },
+      { text: '服务中', completed: false }
+    ],
+    price: '1,200',
+    priceType: '服务费用',
+    actions: {
+      contact: '联系客户',
+      message: null
+    }
+  },
+  {
+    id: 4,
+    orderNo: '#20251104015',
+    status: 'pending_confirm',
+    statusText: '待确认',
+    title: '智能门锁安装服务',
+    address: '北京市西城区金融街',
+    time: '2025-11-04 14:00 - 17:00',
+    price: '600',
+    priceType: '服务费用',
+    actions: {
+      contact: '联系客户',
+      message: null
+    }
+  },
+  {
+    id: 5,
+    orderNo: '#20251103012',
+    status: 'pending_accept',
+    statusText: '待验收',
+    title: '监控系统安装',
+    address: '北京市丰台区科技园',
+    time: '2025-11-03 09:00 - 12:00',
+    price: '1,500',
+    priceType: '服务费用',
+    actions: {
+      contact: '联系客户',
+      message: null
+    }
+  },
+  {
+    id: 6,
+    orderNo: '#20251028005',
+    status: 'completed',
+    statusText: '已完成',
+    title: '网络设备维修',
+    address: '北京市朝阳区CBD',
+    time: '2025-10-28 10:00 - 15:00',
+    price: '900',
+    priceType: '服务费用',
+    actions: {
+      contact: null,
+      message: null
+    }
+  }
+])
+
+// 根据当前Tab筛选工单
+const filteredWorkorders = computed(() => {
+  if (activeTab.value === 0) {
+    return workorders.value.filter(w => w.status === 'in_progress')
+  }
+  const targetStatus = tabs.value[activeTab.value].status
+  return workorders.value.filter(w => w.status === targetStatus)
+})
+
+onMounted(() => {
+  loadWorkorders()
+  updateTabCounts()
+})
+
+function switchTab(index: number) {
+  activeTab.value = index
+}
+
+// 加载工单数据
+function loadWorkorders() {
+  // TODO: 调用API获取工单列表
+  console.log('加载工单列表')
+}
+
+// 更新Tab角标数量
+function updateTabCounts() {
+  tabs.value.forEach(tab => {
+    tab.count = workorders.value.filter(w => w.status === tab.status).length
+  })
+}
+
+// 搜索
+function handleSearch() {
+  uni.showToast({
+    title: '搜索功能开发中',
+    icon: 'none'
+  })
+}
+
+// 联系客户
+function handleContact(workorder: any) {
+  uni.showActionSheet({
+    itemList: ['拨打电话', '发送消息'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        // TODO: 拨打电话
+        uni.showToast({
+          title: '拨打电话功能开发中',
+          icon: 'none'
+        })
+      } else if (res.tapIndex === 1) {
+        handleMessage(workorder)
+      }
+    }
+  })
+}
+
+// 消息
+function handleMessage(workorder: any) {
+  uni.navigateTo({
+    url: `/pages/message/message?orderId=${workorder.id}`
+  })
+}
+
+// 查看详情
+function handleViewDetail(workorder: any) {
+  uni.navigateTo({
+    url: `/pages/order/detail?id=${workorder.id}&type=engineer`
+  })
+}
+
+// 底部导航
+function navigateTo(page: string) {
+  if (page === 'workorders') {
+    return // 已经在我的工单页
+  }
+  
+  const pageMap: any = {
+    'home': '/pages/engineer/home',
+    'income': '/pages/engineer/income',
+    'training': '/pages/profile/profile', // TODO: 创建培训认证页面
+    'profile': '/pages/profile/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 20rpx 32rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.search-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+/* Tab横向滚动容器 */
+.tabs-scroll {
+  background-color: #fff;
+  white-space: nowrap;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tabs {
+  display: inline-flex;
+  flex-direction: row;
+  min-width: 100%;
+}
+
+.tab-item {
+  flex-shrink: 0;
+  padding: 24rpx 32rpx;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.tab-item.active {
+  position: relative;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+  background-color: #E53935;
+  border-radius: 2rpx;
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #666;
+  white-space: nowrap;
+}
+
+.tab-item.active .tab-text {
+  color: #E53935;
+  font-weight: 600;
+}
+
+.tab-badge {
+  min-width: 32rpx;
+  height: 32rpx;
+  background-color: #E53935;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.workorder-list {
+  padding: 24rpx 32rpx;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.3;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 工单卡片 */
+.workorder-card {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.card-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.order-number {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.status-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.status-in_progress {
+  background-color: #E3F2FD;
+  color: #1976D2;
+}
+
+.status-pending_confirm {
+  background-color: #FFF3E0;
+  color: #F57C00;
+}
+
+.status-pending_accept {
+  background-color: #E8F5E9;
+  color: #388E3C;
+}
+
+.status-completed {
+  background-color: #F5F5F5;
+  color: #666;
+}
+
+.service-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+  display: block;
+  line-height: 1.4;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.info-icon {
+  width: 28rpx;
+  height: 28rpx;
+  flex-shrink: 0;
+}
+
+.info-text {
+  font-size: 26rpx;
+  color: #666;
+  flex: 1;
+}
+
+/* 进度条区域 */
+.progress-section {
+  margin: 24rpx 0;
+  padding: 20rpx;
+  background-color: #FAFAFA;
+  border-radius: 12rpx;
+}
+
+.progress-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.progress-label {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.progress-percent {
+  font-size: 26rpx;
+  color: #E53935;
+  font-weight: 600;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8rpx;
+  background-color: #E0E0E0;
+  border-radius: 4rpx;
+  overflow: hidden;
+  margin-bottom: 16rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #FF9800;
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+
+.progress-details {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  margin-bottom: 8rpx;
+}
+
+.progress-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.progress-icon {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.progress-icon.completed {
+  background-color: #4CAF50;
+  color: #fff;
+}
+
+.progress-icon.pending {
+  background-color: #FF9800;
+  color: #fff;
+}
+
+.progress-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.progress-info {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-top: 8rpx;
+}
+
+/* 价格区域 */
+.price-section {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin: 20rpx 0;
+}
+
+.price-label {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.price-value {
+  font-size: 36rpx;
+  color: #E53935;
+  font-weight: 700;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.action-btn {
+  padding: 16rpx 32rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  border: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  line-height: 1;
+}
+
+.action-btn.secondary {
+  background-color: #F5F5F5;
+  color: #666;
+}
+
+.action-btn.primary {
+  background-color: #E53935;
+  color: #fff;
+}
+
+
+// 底部导航栏
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8rpx 0;
+  padding-bottom: calc(8rpx + env(safe-area-inset-bottom));
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex: 1;
+}
+
+.bottom-nav .nav-item.active {
+  color: #E53935;
+}
+
+.bottom-nav .nav-item.active .nav-label {
+  color: #E53935;
+}
+
+.bottom-nav .nav-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.bottom-nav .nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.bottom-nav .nav-item:not(.active) .nav-icon {
+  opacity: 0.5;
+}
+
+.bottom-nav .nav-label {
+  font-size: 22rpx;
+  color: #666;
+}
+</style>
+

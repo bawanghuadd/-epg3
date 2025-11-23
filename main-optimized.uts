@@ -1,0 +1,19 @@
+import App from './App.uvue'
+import { createSSRApp } from 'vue'
+
+// 初始化全局错误处理（在 JavaScript 环境中）
+// 注意：UTS 环境可能不支持直接导入 .js 文件
+// 如果需要在 UTS 中使用，需要将 errorHandler 重写为 .uts 文件
+
+export function createApp() {
+  const app = createSSRApp(App)
+  
+  // 初始化全局错误处理（需要在 App.uvue 的 onLaunch 中调用）
+  // import { initErrorHandler } from './utils/errorHandler'
+  // initErrorHandler()
+  
+  return {
+    app
+  }
+}
+

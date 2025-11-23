@@ -1,0 +1,19 @@
+{
+  "light": {
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F5F5",
+    "backgroundTextStyle": "light",
+    "backgroundColorTop": "#F5F5F5",
+    "backgroundColorBottom": "#F5F5F5"
+  },
+  "dark": {
+    "navigationBarBackgroundColor": "#1F1F1F",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#000000",
+    "backgroundTextStyle": "dark",
+    "backgroundColorTop": "#000000",
+    "backgroundColorBottom": "#000000"
+  }
+}
+

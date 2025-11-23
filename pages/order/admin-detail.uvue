@@ -1,0 +1,1406 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="nav-back" @click="goBack">
+        <text class="back-icon">←</text>
+      </view>
+      <text class="nav-title">订单管理 - 详情</text>
+      <view class="nav-placeholder"></view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 订单状态流程 -->
+      <view class="status-section">
+        <view class="section-header">
+          <text class="section-title">订单状态流程</text>
+          <view class="status-badge" :class="'badge-' + currentStatus">
+            {{ statusText }}
+          </view>
+        </view>
+        
+        <view class="status-timeline">
+          <view 
+            class="timeline-item" 
+            v-for="(item, index) in statusTimeline" 
+            :key="index"
+            :class="{ 
+              active: item.status <= currentStatus, 
+              current: item.status === currentStatus,
+              rejected: item.status === 9 && currentStatus === 9
+            }"
+          >
+            <view class="timeline-dot">
+              <text class="dot-icon" v-if="item.status < currentStatus">✓</text>
+              <text class="dot-icon" v-else-if="item.status === currentStatus && currentStatus !== 9">●</text>
+              <text class="dot-icon" v-else-if="item.status === 9 && currentStatus === 9">✕</text>
+            </view>
+            <view class="timeline-content">
+              <text class="timeline-title">{{ item.name }}</text>
+              <text class="timeline-time" v-if="item.time">{{ item.time }}</text>
+              <text class="timeline-operator" v-if="item.operator">操作人: {{ item.operator }}</text>
+              <text class="timeline-desc" v-if="item.desc">{{ item.desc }}</text>
+            </view>
+            <view class="timeline-line" v-if="index < statusTimeline.length - 1"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 后台管理操作区 -->
+      <view class="admin-actions-section" v-if="showAdminActions">
+        <view class="section-title">后台管理操作</view>
+        
+        <!-- 待付款状态 -->
+        <view class="action-card" v-if="currentStatus === 1">
+          <view class="card-title">编辑核算金额</view>
+          <view class="form-row">
+            <text class="form-label">订单金额</text>
+            <input 
+              class="form-input" 
+              type="digit" 
+              v-model="editPrice" 
+              placeholder="请输入金额"
+            />
+            <text class="form-unit">元</text>
+          </view>
+          <button class="admin-btn primary" @click="updatePrice">保存金额</button>
+          <button class="admin-btn secondary" @click="sendPaymentReminder">催付提醒</button>
+        </view>
+
+        <!-- 已付款(待接单)状态 -->
+        <view class="action-card" v-if="currentStatus === 2">
+          <view class="card-title">分配工程师</view>
+          <view class="engineer-pool">
+            <text class="pool-tip">当前接单池中有 {{ engineerPool.length }} 位工程师</text>
+            <button class="admin-btn" @click="viewEngineerPool">查看接单池</button>
+          </view>
+          <view class="form-row">
+            <text class="form-label">手动分配</text>
+            <picker mode="selector" :range="engineerList" range-key="name" @change="onEngineerChange">
+              <view class="picker-value">
+                {{ selectedEngineer ? selectedEngineer.name : '选择工程师' }}
+              </view>
+            </picker>
+          </view>
+          <button class="admin-btn primary" @click="assignEngineer" :disabled="!selectedEngineer">
+            确认分配
+          </button>
+        </view>
+
+        <!-- 工程师接单中状态 -->
+        <view class="action-card" v-if="currentStatus === 3">
+          <view class="card-title">接单管理</view>
+          <view class="info-row">
+            <text class="info-label">接单工程师</text>
+            <text class="info-value">{{ orderInfo.engineerName }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">接单时间</text>
+            <text class="info-value">{{ orderInfo.acceptTime }}</text>
+          </view>
+          <button class="admin-btn" @click="viewCommunication">查看沟通记录</button>
+          <button class="admin-btn secondary" @click="interveneOrder">介入协调</button>
+        </view>
+
+        <!-- 沟通中状态 -->
+        <view class="action-card" v-if="currentStatus === 4">
+          <view class="card-title">沟通监控</view>
+          <view class="info-row">
+            <text class="info-label">沟通状态</text>
+            <text class="info-value">{{ communicationStatus }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">最后沟通</text>
+            <text class="info-value">{{ lastCommunicationTime }}</text>
+          </view>
+          <button class="admin-btn" @click="viewCommunication">查看沟通详情</button>
+          <button class="admin-btn secondary" @click="remindSign">提醒签约</button>
+        </view>
+
+        <!-- 待审核(签约后)状态 -->
+        <view class="action-card" v-if="currentStatus === 5">
+          <view class="card-title">签约审核</view>
+          <view class="contract-info">
+            <view class="info-row">
+              <text class="info-label">签约费用</text>
+              <text class="info-value">￥{{ contractInfo.fee }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">服务时间</text>
+              <text class="info-value">{{ contractInfo.serviceTime }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">签约双方</text>
+              <text class="info-value">{{ orderInfo.customerName }} & {{ orderInfo.engineerName }}</text>
+            </view>
+          </view>
+          <view class="contract-file" @click="viewContract">
+            <text class="file-icon">📄</text>
+            <text class="file-name">电子合同.pdf</text>
+            <text class="file-action">查看</text>
+          </view>
+          <view class="audit-actions">
+            <button class="admin-btn primary" @click="approveContract">审核通过</button>
+            <button class="admin-btn danger" @click="rejectContract">驳回</button>
+          </view>
+        </view>
+
+        <!-- 已完成状态 -->
+        <view class="action-card" v-if="currentStatus === 7">
+          <view class="card-title">订单归档</view>
+          <view class="info-row">
+            <text class="info-label">完成时间</text>
+            <text class="info-value">{{ orderInfo.completeTime }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">订单数据</text>
+            <text class="info-value">完整</text>
+          </view>
+          <button class="admin-btn" @click="generateReport">生成服务报告</button>
+          <button class="admin-btn" @click="exportData">导出订单数据</button>
+        </view>
+
+        <!-- 已驳回状态 -->
+        <view class="action-card" v-if="currentStatus === 9">
+          <view class="card-title">驳回处理</view>
+          <view class="reject-info">
+            <text class="reject-label">驳回原因:</text>
+            <text class="reject-reason">{{ rejectReason }}</text>
+          </view>
+          <button class="admin-btn" @click="viewCommunication">查看沟通记录</button>
+          <button class="admin-btn primary" @click="reopenOrder">重新打开订单</button>
+        </view>
+      </view>
+
+      <!-- 订单基本信息 -->
+      <view class="info-section">
+        <view class="section-title">订单基本信息</view>
+        <view class="info-card">
+          <view class="info-row">
+            <text class="info-label">订单编号</text>
+            <text class="info-value selectable">{{ orderInfo.orderNo }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">服务类型</text>
+            <text class="info-value">{{ orderInfo.serviceType }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">服务标题</text>
+            <text class="info-value">{{ orderInfo.title }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">需求描述</text>
+            <text class="info-value multi-line">{{ orderInfo.description }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">服务地址</text>
+            <text class="info-value multi-line">{{ orderInfo.address }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">预约时间</text>
+            <text class="info-value">{{ orderInfo.appointmentTime }}</text>
+          </view>
+          <view class="info-row highlight">
+            <text class="info-label">订单金额</text>
+            <text class="info-value price">￥{{ orderInfo.price }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">创建时间</text>
+            <text class="info-value">{{ orderInfo.createTime }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 客户信息 -->
+      <view class="info-section">
+        <view class="section-title">客户信息</view>
+        <view class="info-card">
+          <view class="customer-header">
+            <image class="avatar" :src="orderInfo.customerAvatar || '/static/icons/avatar-default.png'" mode="aspectFill"></image>
+            <view class="customer-info">
+              <text class="customer-name">{{ orderInfo.customerName }}</text>
+              <text class="customer-phone">{{ orderInfo.customerPhone }}</text>
+            </view>
+            <button class="contact-btn" @click="contactCustomer">联系</button>
+          </view>
+          <view class="info-row">
+            <text class="info-label">付款凭证</text>
+            <text class="info-value link" @click="viewPaymentProof">查看凭证</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">发起时间</text>
+            <text class="info-value">{{ orderInfo.createTime }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 工程师信息 -->
+      <view class="info-section" v-if="orderInfo.engineerName">
+        <view class="section-title">工程师信息</view>
+        <view class="info-card">
+          <view class="engineer-header">
+            <image class="avatar" :src="orderInfo.engineerAvatar || '/static/icons/avatar-default.png'" mode="aspectFill"></image>
+            <view class="engineer-info">
+              <text class="engineer-name">{{ orderInfo.engineerName }}</text>
+              <view class="engineer-tags">
+                <text class="tag" v-for="(tag, index) in orderInfo.engineerTags" :key="index">{{ tag }}</text>
+              </view>
+            </view>
+            <button class="contact-btn" @click="contactEngineer">联系</button>
+          </view>
+          <view class="info-row">
+            <text class="info-label">联系电话</text>
+            <text class="info-value">{{ orderInfo.engineerPhone }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">接单时间</text>
+            <text class="info-value">{{ orderInfo.acceptTime }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">技能标签</text>
+            <text class="info-value">{{ orderInfo.engineerTags.join('、') }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 沟通记录 -->
+      <view class="info-section" v-if="communicationLogs.length > 0">
+        <view class="section-title">沟通记录</view>
+        <view class="info-card">
+          <view class="comm-item" v-for="(log, index) in communicationLogs" :key="index">
+            <view class="comm-header">
+              <text class="comm-user">{{ log.userName }}</text>
+              <text class="comm-role">{{ log.role }}</text>
+              <text class="comm-time">{{ log.time }}</text>
+            </view>
+            <text class="comm-content">{{ log.content }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 操作日志 -->
+      <view class="info-section">
+        <view class="section-title">操作日志</view>
+        <view class="info-card">
+          <view class="log-item" v-for="(log, index) in operationLogs" :key="index">
+            <view class="log-dot"></view>
+            <view class="log-content">
+              <text class="log-text">{{ log.content }}</text>
+              <text class="log-time">{{ log.time }}</text>
+              <text class="log-operator" v-if="log.operator">操作人: {{ log.operator }} ({{ log.operatorRole }})</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 底部占位 -->
+      <view style="height: 100rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+// 订单ID
+const orderId = ref('')
+
+// 当前订单状态
+const currentStatus = ref(2) // 示例: 2=已付款(待接单)
+
+// 状态文本
+const statusText = computed(() => {
+  const statusMap: any = {
+    1: '待付款',
+    2: '已付款(待接单)',
+    3: '已接单(待签约)',
+    4: '沟通中',
+    5: '待审核(签约后)',
+    6: '待服务',
+    7: '已完成',
+    8: '售后中',
+    9: '已驳回'
+  }
+  return statusMap[currentStatus.value] || ''
+})
+
+// 是否显示后台管理操作
+const showAdminActions = ref(true)
+
+// 编辑金额
+const editPrice = ref('1200.00')
+
+// 工程师接单池
+const engineerPool = ref([
+  { id: 1, name: '李工', skills: ['家电维修', '弱电工程'] },
+  { id: 2, name: '张工', skills: ['充电桩安装', '电气工程'] },
+  { id: 3, name: '王工', skills: ['智能家居', '网络布线'] }
+])
+
+// 工程师列表
+const engineerList = ref([
+  { id: 1, name: '李工', skills: ['家电维修', '弱电工程'] },
+  { id: 2, name: '张工', skills: ['充电桩安装', '电气工程'] },
+  { id: 3, name: '王工', skills: ['智能家居', '网络布线'] },
+  { id: 4, name: '赵工', skills: ['消防工程', '安防监控'] }
+])
+
+// 选中的工程师
+const selectedEngineer = ref(null as any)
+
+// 沟通状态
+const communicationStatus = ref('进行中')
+const lastCommunicationTime = ref('2025-01-19 10:42')
+
+// 合同信息
+const contractInfo = ref({
+  fee: '1200.00',
+  serviceTime: '2025-01-20 14:00 - 16:00'
+})
+
+// 驳回原因
+const rejectReason = ref('工程师资质不符合要求,需要重新分配')
+
+// 订单基本信息
+const orderInfo = ref({
+  orderNo: 'ORD202501190002',
+  serviceType: '售前服务',
+  title: '充电桩安装方案咨询',
+  description: '需要专业工程师评估现场，提供充电桩安装方案',
+  address: '扬州市广陵区商业广场停车场B区',
+  appointmentTime: '2025-01-20 14:00',
+  price: '1200.00',
+  customerName: '张先生',
+  customerPhone: '138****5678',
+  customerAvatar: '',
+  engineerName: '',
+  engineerAvatar: '',
+  engineerTags: [],
+  engineerPhone: '',
+  acceptTime: '',
+  completeTime: '',
+  createTime: '2025-01-18 15:20'
+})
+
+// 订单状态时间轴
+const statusTimeline = computed(() => {
+  const timeline = [
+    {
+      status: 1,
+      name: '待付款',
+      time: orderInfo.value.createTime,
+      operator: orderInfo.value.customerName,
+      desc: '客户发起订单'
+    },
+    {
+      status: 2,
+      name: '已付款(待接单)',
+      time: currentStatus.value >= 2 ? '2025-01-19 09:00' : '',
+      operator: currentStatus.value >= 2 ? orderInfo.value.customerName : '',
+      desc: currentStatus.value >= 2 ? '等待工程师接单' : ''
+    },
+    {
+      status: 3,
+      name: '已接单(待签约)',
+      time: currentStatus.value >= 3 ? orderInfo.value.acceptTime : '',
+      operator: currentStatus.value >= 3 ? orderInfo.value.engineerName : '',
+      desc: currentStatus.value >= 3 ? '工程师已接单' : ''
+    },
+    {
+      status: 4,
+      name: '沟通中',
+      time: currentStatus.value >= 4 ? '2025-01-19 10:35' : '',
+      operator: currentStatus.value >= 4 ? '双方' : '',
+      desc: currentStatus.value >= 4 ? '工程师与客户沟通服务细节' : ''
+    },
+    {
+      status: 5,
+      name: '待审核(签约后)',
+      time: currentStatus.value >= 5 ? '2025-01-19 15:00' : '',
+      operator: currentStatus.value >= 5 ? '双方' : '',
+      desc: currentStatus.value >= 5 ? '等待后台审核合同' : ''
+    },
+    {
+      status: 6,
+      name: '待服务',
+      time: currentStatus.value >= 6 ? '2025-01-19 16:00' : '',
+      operator: currentStatus.value >= 6 ? '后台管理员' : '',
+      desc: currentStatus.value >= 6 ? '审核通过,等待服务' : ''
+    },
+    {
+      status: 7,
+      name: '已完成',
+      time: currentStatus.value >= 7 ? orderInfo.value.completeTime : '',
+      operator: currentStatus.value >= 7 ? orderInfo.value.customerName : '',
+      desc: currentStatus.value >= 7 ? '订单已完成' : ''
+    }
+  ]
+
+  // 如果订单被驳回
+  if (currentStatus.value === 9) {
+    return [
+      ...timeline.slice(0, 5),
+      {
+        status: 9,
+        name: '已驳回',
+        time: '2025-01-19 16:00',
+        operator: '后台管理员',
+        desc: rejectReason.value
+      }
+    ]
+  }
+
+  return timeline
+})
+
+// 沟通记录
+const communicationLogs = ref([
+  {
+    userName: '李工',
+    role: '工程师',
+    time: '2025-01-19 10:35',
+    content: '您好,我已接单,明天下午2点可以到现场勘察,您看方便吗?'
+  },
+  {
+    userName: '张先生',
+    role: '客户',
+    time: '2025-01-19 10:40',
+    content: '可以的,明天下午2点见。'
+  },
+  {
+    userName: '李工',
+    role: '工程师',
+    time: '2025-01-19 10:42',
+    content: '好的,我会准时到达,请保持电话畅通。'
+  }
+])
+
+// 操作日志
+const operationLogs = ref([
+  {
+    content: '订单进入接单池',
+    time: '2025-01-19 09:00',
+    operator: '系统',
+    operatorRole: '自动'
+  },
+  {
+    content: '订单支付成功',
+    time: '2025-01-19 09:00',
+    operator: '张先生',
+    operatorRole: '客户'
+  },
+  {
+    content: '后台核算金额: ￥1200.00',
+    time: '2025-01-18 16:00',
+    operator: '管理员A',
+    operatorRole: '后台'
+  },
+  {
+    content: '订单创建成功',
+    time: '2025-01-18 15:20',
+    operator: '张先生',
+    operatorRole: '客户'
+  }
+])
+
+onMounted(() => {
+  // 获取页面参数
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1] as any
+  const options = currentPage.options || {}
+  
+  orderId.value = options.id || ''
+  
+  // 加载订单详情
+  loadOrderDetail()
+})
+
+// 加载订单详情
+function loadOrderDetail() {
+  // TODO: 从后端API获取订单详情
+  console.log('加载订单详情:', orderId.value)
+}
+
+// 返回
+function goBack() {
+  uni.navigateBack()
+}
+
+// ========== 后台管理操作 ==========
+
+// 更新金额
+function updatePrice() {
+  if (!editPrice.value || parseFloat(editPrice.value) <= 0) {
+    uni.showToast({
+      title: '请输入有效金额',
+      icon: 'none'
+    })
+    return
+  }
+  
+  uni.showModal({
+    title: '确认修改',
+    content: `将订单金额修改为 ￥${editPrice.value}?`,
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用API更新金额
+        uni.showToast({
+          title: '金额已更新',
+          icon: 'success'
+        })
+        orderInfo.value.price = editPrice.value
+      }
+    }
+  })
+}
+
+// 发送催付提醒
+function sendPaymentReminder() {
+  uni.showModal({
+    title: '发送催付提醒',
+    content: '确定向客户发送支付提醒消息?',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用API发送提醒
+        uni.showToast({
+          title: '提醒已发送',
+          icon: 'success'
+        })
+      }
+    }
+  })
+}
+
+// 查看接单池
+function viewEngineerPool() {
+  uni.showModal({
+    title: '接单池',
+    content: `当前有 ${engineerPool.value.length} 位工程师在接单池中等待接单`,
+    showCancel: false
+  })
+}
+
+// 选择工程师
+function onEngineerChange(e: any) {
+  const index = e.detail.value
+  selectedEngineer.value = engineerList.value[index]
+}
+
+// 分配工程师
+function assignEngineer() {
+  if (!selectedEngineer.value) {
+    uni.showToast({
+      title: '请选择工程师',
+      icon: 'none'
+    })
+    return
+  }
+  
+  uni.showModal({
+    title: '确认分配',
+    content: `将订单分配给 ${selectedEngineer.value.name}?`,
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用API分配工程师
+        uni.showToast({
+          title: '分配成功',
+          icon: 'success'
+        })
+        orderInfo.value.engineerName = selectedEngineer.value.name
+        orderInfo.value.engineerTags = selectedEngineer.value.skills
+        currentStatus.value = 3
+      }
+    }
+  })
+}
+
+// 查看沟通记录
+function viewCommunication() {
+  uni.showToast({
+    title: '查看沟通记录',
+    icon: 'none'
+  })
+}
+
+// 介入协调
+function interveneOrder() {
+  uni.showModal({
+    title: '介入协调',
+    content: '确定要介入此订单的协调吗?',
+    success: (res) => {
+      if (res.confirm) {
+        uni.showToast({
+          title: '已介入订单',
+          icon: 'success'
+        })
+      }
+    }
+  })
+}
+
+// 提醒签约
+function remindSign() {
+  uni.showModal({
+    title: '提醒签约',
+    content: '向双方发送签约提醒?',
+    success: (res) => {
+      if (res.confirm) {
+        uni.showToast({
+          title: '提醒已发送',
+          icon: 'success'
+        })
+      }
+    }
+  })
+}
+
+// 查看合同
+function viewContract() {
+  uni.showToast({
+    title: '查看电子合同',
+    icon: 'none'
+  })
+}
+
+// 审核通过
+function approveContract() {
+  uni.showModal({
+    title: '审核通过',
+    content: '确认审核通过此合同?',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用API审核通过
+        uni.showToast({
+          title: '审核通过',
+          icon: 'success'
+        })
+        currentStatus.value = 6
+      }
+    }
+  })
+}
+
+// 驳回合同
+function rejectContract() {
+  uni.showPrompt({
+    title: '驳回合同',
+    content: '请输入驳回原因',
+    placeholderText: '请填写驳回原因',
+    success: (res) => {
+      if (res.confirm && res.content) {
+        // TODO: 调用API驳回
+        uni.showToast({
+          title: '已驳回',
+          icon: 'success'
+        })
+        rejectReason.value = res.content
+        currentStatus.value = 9
+      }
+    }
+  } as any)
+}
+
+// 生成服务报告
+function generateReport() {
+  uni.showLoading({
+    title: '生成中...'
+  })
+  
+  setTimeout(() => {
+    uni.hideLoading()
+    uni.showToast({
+      title: '报告已生成',
+      icon: 'success'
+    })
+  }, 2000)
+}
+
+// 导出订单数据
+function exportData() {
+  uni.showLoading({
+    title: '导出中...'
+  })
+  
+  setTimeout(() => {
+    uni.hideLoading()
+    uni.showToast({
+      title: '数据已导出',
+      icon: 'success'
+    })
+  }, 2000)
+}
+
+// 重新打开订单
+function reopenOrder() {
+  uni.showModal({
+    title: '重新打开订单',
+    content: '确定要重新打开此订单,回到"沟通中"状态?',
+    success: (res) => {
+      if (res.confirm) {
+        // TODO: 调用API重新打开
+        uni.showToast({
+          title: '订单已重新打开',
+          icon: 'success'
+        })
+        currentStatus.value = 4
+      }
+    }
+  })
+}
+
+// 联系客户
+function contactCustomer() {
+  uni.showActionSheet({
+    itemList: ['拨打电话', '发送消息', '取消'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.makePhoneCall({
+          phoneNumber: orderInfo.value.customerPhone.replace(/\*/g, '1')
+        })
+      } else if (res.tapIndex === 1) {
+        uni.showToast({
+          title: '消息功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 联系工程师
+function contactEngineer() {
+  uni.showActionSheet({
+    itemList: ['拨打电话', '发送消息', '取消'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.makePhoneCall({
+          phoneNumber: orderInfo.value.engineerPhone.replace(/\*/g, '1')
+        })
+      } else if (res.tapIndex === 1) {
+        uni.showToast({
+          title: '消息功能开发中',
+          icon: 'none'
+        })
+      }
+    }
+  })
+}
+
+// 查看付款凭证
+function viewPaymentProof() {
+  uni.showToast({
+    title: '查看付款凭证',
+    icon: 'none'
+  })
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  padding-bottom: 40rpx;
+}
+
+/* 顶部导航 */
+.top-nav {
+  background-color: #fff;
+  padding: 24rpx 32rpx;
+  padding-top: calc(24rpx + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.nav-back {
+  width: 60rpx;
+}
+
+.back-icon {
+  font-size: 44rpx;
+  color: #333;
+  font-weight: 600;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-placeholder {
+  width: 60rpx;
+}
+
+.content-scroll {
+  padding: 24rpx 32rpx;
+}
+
+/* 订单状态流程 */
+.status-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.badge-1 {
+  color: #FF6B00;
+  background-color: #FFF3E6;
+}
+
+.badge-2 {
+  color: #3B82F6;
+  background-color: #EFF6FF;
+}
+
+.badge-3 {
+  color: #10B981;
+  background-color: #ECFDF5;
+}
+
+.badge-4 {
+  color: #8B5CF6;
+  background-color: #F5F3FF;
+}
+
+.badge-5 {
+  color: #F59E0B;
+  background-color: #FFFBEB;
+}
+
+.badge-6 {
+  color: #06B6D4;
+  background-color: #ECFEFF;
+}
+
+.badge-7 {
+  color: #10B981;
+  background-color: #ECFDF5;
+}
+
+.badge-9 {
+  color: #999;
+  background-color: #F5F5F5;
+}
+
+/* 状态时间轴 */
+.status-timeline {
+  position: relative;
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  padding-bottom: 40rpx;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-dot {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background-color: #E0E0E0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-item.active .timeline-dot {
+  background-color: #E53935;
+}
+
+.timeline-item.current .timeline-dot {
+  background-color: #E53935;
+  box-shadow: 0 0 0 8rpx rgba(229, 57, 53, 0.2);
+}
+
+.timeline-item.rejected .timeline-dot {
+  background-color: #999;
+}
+
+.dot-icon {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.timeline-content {
+  flex: 1;
+  margin-left: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.timeline-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #666;
+}
+
+.timeline-item.active .timeline-title {
+  color: #333;
+}
+
+.timeline-item.current .timeline-title {
+  color: #E53935;
+}
+
+.timeline-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.timeline-operator {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.timeline-desc {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 24rpx;
+  top: 48rpx;
+  bottom: 0;
+  width: 2rpx;
+  background-color: #E0E0E0;
+  z-index: 1;
+}
+
+.timeline-item.active .timeline-line {
+  background-color: #E53935;
+}
+
+/* 后台管理操作区 */
+.admin-actions-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  border: 2rpx solid #E53935;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.card-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #E53935;
+  margin-bottom: 8rpx;
+}
+
+/* 表单 */
+.form-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #666;
+  min-width: 140rpx;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  background-color: #fff;
+  padding: 16rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid #E0E0E0;
+}
+
+.form-unit {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.picker-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  padding: 16rpx;
+  background-color: #fff;
+  border-radius: 8rpx;
+  border: 1rpx solid #E0E0E0;
+}
+
+/* 工程师接单池 */
+.engineer-pool {
+  padding: 20rpx;
+  background-color: #EFF6FF;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pool-tip {
+  font-size: 26rpx;
+  color: #3B82F6;
+}
+
+/* 合同信息 */
+.contract-info {
+  padding: 20rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.contract-file {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+}
+
+.file-icon {
+  font-size: 40rpx;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.file-action {
+  font-size: 26rpx;
+  color: #E53935;
+}
+
+/* 审核操作 */
+.audit-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+/* 驳回信息 */
+.reject-info {
+  padding: 20rpx;
+  background-color: #FEF2F2;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.reject-label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.reject-reason {
+  font-size: 28rpx;
+  color: #E53935;
+  line-height: 1.6;
+}
+
+/* 后台管理按钮 */
+.admin-btn {
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: 1rpx solid #E0E0E0;
+  background-color: #fff;
+  color: #666;
+  line-height: 1;
+}
+
+.admin-btn.primary {
+  border-color: #E53935;
+  background-color: #E53935;
+  color: #fff;
+}
+
+.admin-btn.secondary {
+  border-color: #E0E0E0;
+  background-color: #F5F5F5;
+  color: #666;
+}
+
+.admin-btn.danger {
+  border-color: #E53935;
+  background-color: #fff;
+  color: #E53935;
+}
+
+.admin-btn[disabled] {
+  opacity: 0.5;
+}
+
+/* 信息卡片 */
+.info-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.info-row.highlight {
+  padding: 20rpx;
+  background-color: #FFF3E6;
+  border-radius: 12rpx;
+}
+
+.info-label {
+  font-size: 26rpx;
+  color: #999;
+  min-width: 140rpx;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  text-align: right;
+  word-break: break-all;
+}
+
+.info-value.multi-line {
+  text-align: left;
+  margin-left: 20rpx;
+}
+
+.info-value.price {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #E53935;
+}
+
+.info-value.link {
+  color: #E53935;
+}
+
+.info-value.selectable {
+  user-select: text;
+}
+
+/* 客户/工程师头部 */
+.customer-header,
+.engineer-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 24rpx;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+}
+
+.customer-info,
+.engineer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.customer-name,
+.engineer-name {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.customer-phone {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.engineer-tags {
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 22rpx;
+  color: #E53935;
+  background-color: #FFEBEE;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.contact-btn {
+  padding: 16rpx 32rpx;
+  background-color: #E53935;
+  color: #fff;
+  border: none;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  line-height: 1;
+}
+
+/* 沟通记录 */
+.comm-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.comm-item:last-child {
+  border-bottom: none;
+}
+
+.comm-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.comm-user {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.comm-role {
+  font-size: 22rpx;
+  color: #fff;
+  background-color: #E53935;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.comm-time {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: auto;
+}
+
+.comm-content {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 操作日志 */
+.log-item {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  position: relative;
+}
+
+.log-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 40rpx;
+  bottom: -20rpx;
+  width: 2rpx;
+  background-color: #E0E0E0;
+}
+
+.log-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background-color: #E53935;
+  margin-top: 8rpx;
+  flex-shrink: 0;
+}
+
+.log-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.log-text {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.log-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.log-operator {
+  font-size: 24rpx;
+  color: #999;
+}
+</style>
+

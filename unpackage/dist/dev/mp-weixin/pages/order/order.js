@@ -408,20 +408,20 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             N: index
           });
         }),
-        e: common_assets._imports_12,
+        e: common_assets._imports_2,
         f: common_vendor.o(($event) => {
           return navigateTo("home");
         }),
-        g: common_assets._imports_1$1,
+        g: common_assets._imports_4$1,
         h: common_vendor.o(($event) => {
           return navigateTo("order");
         }),
         i: common_vendor.o(handleFabClick),
-        j: common_assets._imports_14,
+        j: common_assets._imports_1$2,
         k: common_vendor.o(($event) => {
           return navigateTo("message");
         }),
-        l: common_assets._imports_3,
+        l: common_assets._imports_5,
         m: common_vendor.o(($event) => {
           return navigateTo("profile");
         }),

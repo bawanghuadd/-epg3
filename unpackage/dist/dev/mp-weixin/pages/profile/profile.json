@@ -2,5 +2,7 @@
   "navigationBarTitleText": "我的",
   "navigationStyle": "custom",
   "enablePullDownRefresh": false,
-  "usingComponents": {}
+  "usingComponents": {
+    "mock-user-switch": "../../components/MockUserSwitch/MockUserSwitch"
+  }
 }

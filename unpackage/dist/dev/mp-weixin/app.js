@@ -9,6 +9,12 @@ if (!Math) {
   "./pages/profile/profile.js";
   "./pages/profile/verify.js";
   "./pages/order/create.js";
+  "./pages/service/presales.js";
+  "./pages/service/aftersales.js";
+  "./pages/engineer/home.js";
+  "./pages/engineer/workorders.js";
+  "./pages/engineer/income.js";
+  "./pages/test/mock-login-demo.js";
 }
 const _sfc_main = common_vendor.defineComponent({
   onLaunch: function() {

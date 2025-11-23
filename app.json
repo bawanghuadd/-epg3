@@ -6,7 +6,10 @@
     "pages/message/message",
     "pages/profile/profile",
     "pages/profile/verify",
-    "pages/order/create"
+    "pages/order/create",
+    "pages/service/presales",
+    "pages/service/aftersales",
+    "pages/engineer/home"
   ],
   "window": {
     "navigationBarTextStyle": "black",
@@ -34,8 +37,7 @@
   "plugins": {},
   "preloadRule": {},
   "resizable": true,
-  "navigateToMiniProgramAppIdList": [],
-  "usingStaticServer": false,
   "darkmode": false,
-  "themeLocation": "theme.json"
+  "themeLocation": "theme.json",
+  "tabBar": {}
 }
