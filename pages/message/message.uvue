@@ -326,13 +326,20 @@ function navigateTo(page: string) {
 
 .top-nav {
   background-color: #fff;
-  padding: 24rpx 32rpx;
-  padding-top: calc(24rpx + env(safe-area-inset-top));
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1rpx solid #E5E5E5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .nav-back {
@@ -419,6 +426,7 @@ function navigateTo(page: string) {
 
 .content-scroll {
   flex: 1;
+  padding-top: calc(164rpx + env(safe-area-inset-top));
 }
 
 // 消息列表

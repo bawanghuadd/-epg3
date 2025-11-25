@@ -1,0 +1,811 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-title">我的</text>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 用户信息卡片 -->
+      <view class="user-card">
+        <view class="user-info-row">
+          <image class="user-avatar" :src="userInfo.avatar || '/static/icons/profile.png'" mode="aspectFill"></image>
+          <view class="user-details">
+            <view class="name-row">
+              <text class="user-name">{{ userInfo.name }}</text>
+              <view class="verified-badge">
+                <text class="badge-icon">☀</text>
+                <text class="badge-text">认证工程师</text>
+              </view>
+            </view>
+            <text class="user-id">ID: {{ userInfo.id }}</text>
+            <text class="company-name" v-if="userInfo.companyName">{{ userInfo.companyName }}</text>
+          </view>
+        </view>
+
+        <!-- 状态显示行 -->
+        <view class="status-row">
+          <view class="status-item">
+            <view class="status-badge" :class="{ online: userInfo.onlineStatus === 'online' }">
+              <text class="status-dot"></text>
+              <text class="status-text">{{ userInfo.onlineStatus === 'online' ? '在线' : '离线' }}</text>
+            </view>
+          </view>
+          <view class="status-item">
+            <text class="status-label">信誉分</text>
+            <text class="status-value">{{ userInfo.creditScore }}</text>
+          </view>
+        </view>
+
+        <!-- 统计数据行 -->
+        <view class="stats-row">
+          <view class="stat-item">
+            <text class="stat-value">¥{{ userInfo.todayIncome }}</text>
+            <text class="stat-label">今日接单金额</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-value">{{ userInfo.todayOrders }}</text>
+            <text class="stat-label">今日接单数</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-value">{{ userInfo.totalOrders }}</text>
+            <text class="stat-label">总接单数</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 工程师认证卡片 -->
+      <view class="verification-card" :class="{ verified: userInfo.isVerified, unverified: !userInfo.isVerified }">
+        <view class="verification-content">
+          <view class="verification-icon">
+            <text class="icon-text">{{ userInfo.isVerified ? '✓' : '!' }}</text>
+          </view>
+          <view class="verification-info">
+            <text class="verification-title">工程师认证</text>
+            <text class="verification-status">{{ userInfo.isVerified ? '已认证' : '未认证' }}</text>
+          </view>
+        </view>
+        <view class="verification-action">
+          <text v-if="!userInfo.isVerified" class="verify-btn" @click="handleVerify">去认证</text>
+          <text v-else class="verified-text">已认证</text>
+        </view>
+      </view>
+
+      <!-- 功能菜单列表 -->
+      <view class="menu-list">
+        <view class="menu-item" @click="handleMenuClick('workorders')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/我的工单.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">我的工单</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" v-if="userInfo.companyName" @click="handleMenuClick('company')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/我的公司.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">我的公司</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" v-if="!userInfo.hasSignedAgreement" @click="handleMenuClick('agreement')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/签署协议.png" mode="aspectFit"></image>
+            </view>
+            <view class="menu-text-wrapper">
+              <text class="menu-text">签署职业协议</text>
+              <text class="menu-subtitle">电子签名</text>
+            </view>
+          </view>
+          <view class="badge-new">
+            <text class="badge-new-text">待签署</text>
+          </view>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('appeal')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/用户申诉.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">申诉/反馈</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('income-detail')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/充值.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">金额明细</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('deposit')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/保证金.png" mode="aspectFit"></image>
+            </view>
+            <view class="menu-text-wrapper">
+              <text class="menu-text">保证金</text>
+              <text class="menu-subtitle">¥{{ userInfo.depositAmount }}</text>
+            </view>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('withdraw')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/提现.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">提现</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('credit')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/icon_信用贷.png" mode="aspectFit"></image>
+            </view>
+            <view class="menu-text-wrapper">
+              <text class="menu-text">提升信誉分</text>
+              <text class="menu-subtitle">当前{{ userInfo.creditScore }}分</text>
+            </view>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('bankcard')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/绑定银行卡.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">绑定银行卡</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('help')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/帮助中心.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">帮助中心</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('settings')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/static/icons/settings.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">设置</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+
+        <view class="menu-item" @click="handleMenuClick('customer-service')">
+          <view class="menu-left">
+            <view class="menu-icon-box">
+              <image class="menu-icon" src="/icon/profile-icon/在线客服.png" mode="aspectFit"></image>
+            </view>
+            <text class="menu-text">在线客服</text>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+      </view>
+
+      <!-- 占位，防止被底部导航遮挡 -->
+      <view style="height: 200rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item" @click="navigateTo('home')">
+        <image class="nav-icon" src="/static/icons/home.png" mode="aspectFit"></image>
+        <text class="nav-label">接单大厅</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('workorders')">
+        <image class="nav-icon" src="/static/icons/order.png" mode="aspectFit"></image>
+        <text class="nav-label">我的工单</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('income')">
+        <image class="nav-icon" src="/static/icons/wallet.png" mode="aspectFit"></image>
+        <text class="nav-label">收入</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('training')">
+        <image class="nav-icon" src="/static/icons/training.svg" mode="aspectFit"></image>
+        <text class="nav-label">培训认证</text>
+      </view>
+      <view class="nav-item active" @click="navigateTo('profile')">
+        <image class="nav-icon" src="/static/icons/profile-active.png" mode="aspectFit"></image>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+
+const userInfo = ref({
+  name: '张工程师',
+  id: 'ENG10086',
+  avatar: '',
+  // 状态显示
+  onlineStatus: 'online', // online/offline
+  todayIncome: '2,350.00',
+  todayOrders: 3,
+  totalOrders: 156,
+  creditScore: 85,
+  // 其他信息
+  depositAmount: '500.00',
+  companyName: '优派科技服务有限公司',
+  hasSignedAgreement: false, // 是否已签署职业协议
+  isVerified: false // 是否已认证工程师
+})
+
+// 加载用户信息
+function loadUserInfo() {
+  // TODO: 从后端API获取用户信息
+  // 这里使用模拟数据
+  console.log('加载用户信息')
+}
+
+// 处理菜单点击
+function handleMenuClick(type: string) {
+  const menuActions: Record<string, () => void> = {
+    'workorders': () => {
+      uni.navigateTo({
+        url: '/pages/engineer/workorders'
+      })
+    },
+    'company': () => {
+      uni.showToast({
+        title: '我的公司功能开发中',
+        icon: 'none'
+      })
+    },
+    'agreement': () => {
+      uni.showToast({
+        title: '职业协议签署功能开发中',
+        icon: 'none'
+      })
+    },
+    'appeal': () => {
+      uni.showToast({
+        title: '申诉/反馈功能开发中',
+        icon: 'none'
+      })
+    },
+    'income-detail': () => {
+      uni.showToast({
+        title: '金额明细功能开发中',
+        icon: 'none'
+      })
+    },
+    'deposit': () => {
+      uni.showToast({
+        title: '保证金功能开发中',
+        icon: 'none'
+      })
+    },
+    'withdraw': () => {
+      uni.showToast({
+        title: '提现功能开发中',
+        icon: 'none'
+      })
+    },
+    'credit': () => {
+      uni.showToast({
+        title: '提升信誉分功能开发中',
+        icon: 'none'
+      })
+    },
+    'bankcard': () => {
+      uni.showToast({
+        title: '绑定银行卡功能开发中',
+        icon: 'none'
+      })
+    },
+    'help': () => {
+      uni.showToast({
+        title: '帮助中心功能开发中',
+        icon: 'none'
+      })
+    },
+    'settings': () => {
+      uni.navigateTo({
+        url: '/pages/engineer/app-settings'
+      })
+    },
+    'customer-service': () => {
+      uni.showToast({
+        title: '在线客服功能开发中',
+        icon: 'none'
+      })
+    }
+  }
+
+  const action = menuActions[type]
+  if (action) {
+    action()
+  }
+}
+
+// 处理去认证按钮点击
+function handleVerify() {
+  uni.navigateTo({
+    url: '/pages/engineer/certification'
+  })
+}
+
+onMounted(() => {
+  loadUserInfo()
+})
+
+onShow(() => {
+  // 页面显示时刷新用户信息
+  loadUserInfo()
+})
+
+// 底部导航
+function navigateTo(page: string) {
+  if (page === 'profile') {
+    return // 已经在我的页面
+  }
+  
+  const pageMap: any = {
+    'home': '/pages/engineer/home',
+    'workorders': '/pages/engineer/workorders',
+    'income': '/pages/engineer/income',
+    'training': '/pages/engineer/training',
+    'profile': '/pages/engineer/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 32rpx 32rpx;
+  padding-top: calc(112rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.content-scroll {
+  flex: 1;
+  padding: 24rpx;
+  padding-top: calc(200rpx + env(safe-area-inset-top) + 24rpx);
+}
+
+/* 用户卡片 */
+.user-card {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  color: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(255, 107, 53, 0.3);
+}
+
+.user-info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.user-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background-color: rgba(255, 255, 255, 0.2);
+  margin-right: 24rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.user-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.verified-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.badge-icon {
+  font-size: 20rpx;
+}
+
+.badge-text {
+  font-size: 20rpx;
+}
+
+.user-id {
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+.company-name {
+  font-size: 24rpx;
+  opacity: 0.9;
+  margin-top: 4rpx;
+}
+
+/* 状态显示行 */
+.status-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.status-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.status-badge.online .status-dot {
+  background-color: #4CAF50;
+}
+
+.status-badge:not(.online) .status-dot {
+  background-color: #F44336;
+}
+
+.status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  font-size: 24rpx;
+}
+
+.status-label {
+  font-size: 24rpx;
+  opacity: 0.8;
+}
+
+.status-value {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+/* 统计数据行 */
+.stats-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  flex: 1;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  opacity: 0.8;
+}
+
+/* 工程师认证卡片 */
+.verification-card {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+.verification-card.verified {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+  color: #fff;
+}
+
+.verification-card.unverified {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.verification-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.verification-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.verification-card.verified .verification-icon {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.verification-card.unverified .verification-icon {
+  background-color: #ddd;
+}
+
+.verification-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.verification-title {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.verification-status {
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+.verification-action {
+  display: flex;
+  align-items: center;
+}
+
+.verify-btn {
+  background-color: #FF6B35;
+  color: #fff;
+  padding: 16rpx 32rpx;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.verified-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+/* 菜单列表 */
+.menu-list {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 0 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24rpx;
+  flex: 1;
+}
+
+.menu-icon-box {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFF3E0;
+}
+
+.menu-icon {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.menu-text {
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-text-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.menu-subtitle {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.arrow-icon {
+  font-size: 48rpx;
+  color: #ccc;
+  font-weight: 300;
+}
+
+.badge-new {
+  background-color: #FF6B35;
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+}
+
+.badge-new-text {
+  font-size: 20rpx;
+  color: #fff;
+}
+
+/* 底部导航栏 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8rpx 0;
+  padding-bottom: calc(8rpx + env(safe-area-inset-bottom));
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex: 1;
+}
+
+.bottom-nav .nav-item.active {
+  color: #E53935;
+}
+
+.bottom-nav .nav-item.active .nav-label {
+  color: #E53935;
+}
+
+.bottom-nav .nav-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.bottom-nav .nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.bottom-nav .nav-item:not(.active) .nav-icon {
+  opacity: 0.5;
+}
+
+.bottom-nav .nav-label {
+  font-size: 22rpx;
+  color: #666;
+}
+</style>
+

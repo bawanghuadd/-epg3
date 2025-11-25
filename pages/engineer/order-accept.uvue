@@ -1,0 +1,785 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">←</text>
+      </view>
+      <text class="nav-title">新订单</text>
+      <view class="placeholder"></view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 倒计时卡片 -->
+      <view class="countdown-card">
+        <view class="countdown-wrapper">
+          <text class="countdown-number">{{ countdown }}</text>
+          <text class="countdown-label">秒后自动释放订单</text>
+        </view>
+        <text class="order-no">订单编号：{{ orderDetail.orderNo }}</text>
+      </view>
+
+      <!-- 服务标题和价格 -->
+      <view class="service-header">
+        <text class="service-title">{{ orderDetail.title }}</text>
+        <view class="price-wrapper">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{ orderDetail.price }}</text>
+          <text class="price-label">/ {{ orderDetail.priceType }}</text>
+        </view>
+      </view>
+
+      <!-- 客户信息 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-icon">👤</text>
+          <text class="section-title">客户信息</text>
+        </view>
+        <view class="info-row">
+          <image class="avatar" :src="orderDetail.clientAvatar" mode="aspectFill"></image>
+          <view class="client-info">
+            <text class="client-name">{{ orderDetail.clientName }}</text>
+            <text class="client-phone">{{ orderDetail.clientPhone }}</text>
+          </view>
+          <view class="call-btn" @click="callClient">
+            <text class="call-emoji">📞</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 服务地址 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-icon">📍</text>
+          <text class="section-title">服务地址</text>
+        </view>
+        <view class="address-row" @click="navigateToLocation">
+          <view class="address-info">
+            <text class="address-text">{{ orderDetail.address }}</text>
+            <view class="distance-tag">
+              <text class="distance-text">距您 {{ orderDetail.distance }}km</text>
+            </view>
+          </view>
+          <text class="arrow-icon">›</text>
+        </view>
+      </view>
+
+      <!-- 服务详情 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-icon">📋</text>
+          <text class="section-title">服务详情</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">服务类型</text>
+          <text class="detail-value">{{ orderDetail.serviceTypeText }}</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">业务领域</text>
+          <text class="detail-value">{{ orderDetail.domainName }}</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">设备型号</text>
+          <text class="detail-value">{{ orderDetail.deviceModel }}</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">故障描述</text>
+          <text class="detail-value multiline">{{ orderDetail.description }}</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">预约时间</text>
+          <text class="detail-value">{{ orderDetail.serviceTime }}</text>
+        </view>
+
+        <view class="detail-item">
+          <text class="detail-label">预估工期</text>
+          <text class="detail-value">{{ orderDetail.estimatedDays }}</text>
+        </view>
+
+        <view class="detail-item" v-if="orderDetail.requirements">
+          <text class="detail-label">特殊要求</text>
+          <text class="detail-value">{{ orderDetail.requirements }}</text>
+        </view>
+
+        <!-- 现场拍照和维修方案按钮 -->
+        <view class="attachment-btns" v-if="orderDetail.hasAttachments">
+          <view class="attachment-btn" @click="viewPhotos" v-if="orderDetail.images && orderDetail.images.length > 0">
+            <text class="attachment-icon">📷</text>
+            <text class="attachment-text">现场拍照</text>
+          </view>
+          <view class="attachment-btn" @click="viewPlan" v-if="orderDetail.hasPlan">
+            <text class="attachment-icon">📄</text>
+            <text class="attachment-text">维修方案</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 温馨提示 -->
+      <view class="tips-card">
+        <view class="tips-header">
+          <text class="tips-icon">ℹ️</text>
+          <text class="tips-title">温馨提示：</text>
+        </view>
+        <text class="tips-text">接单后请在30分钟内联系客户确认服务时间，并在约定时间到达现场。如无法按时到达，请提前与客户沟通。</text>
+      </view>
+
+      <!-- 底部占位 -->
+      <view style="height: 180rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-actions">
+      <button class="action-btn reject-btn" @click="handleReject">
+        <text>拒绝</text>
+      </button>
+      <button class="action-btn accept-btn" @click="handleAccept">
+        <text>立即接单</text>
+      </button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
+// 获取路由参数
+const orderId = ref('')
+
+// 倒计时
+const countdown = ref(0)
+let countdownTimer: number | null = null
+
+// 订单详情数据
+const orderDetail = ref({
+  id: '',
+  orderNo: 'OR202511180001',
+  title: '充电桩维修服务',
+  price: '1,200',
+  priceType: '预估收益',
+  serviceTypeText: '售后维修',
+  domainName: '场站充电桩',
+  address: '江苏省扬州市邗江区文昌西路456号扬州科技校园A栋',
+  distance: 2.8,
+  clientName: '李先生',
+  clientPhone: '138****8888',
+  clientAvatar: '/static/icons/profile.png',
+  deviceModel: 'XX品牌 120kW直流充电桩',
+  description: '充电桩无法启动，屏幕无显示，可能是主控板故障',
+  serviceTime: '2025-11-18 14:00 - 18:00',
+  estimatedDays: '2天',
+  requirements: '需要现场拍照记录、提供维修方案',
+  images: [],
+  hasAttachments: true,
+  hasPlan: true,
+  latitude: 32.3944,
+  longitude: 119.4201
+})
+
+onMounted(() => {
+  // 获取路由参数
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1] as any
+  orderId.value = currentPage.$route?.query?.id || ''
+  
+  // 加载订单详情
+  loadOrderDetail()
+  
+  // 开始倒计时
+  startCountdown()
+})
+
+onUnmounted(() => {
+  // 清除倒计时
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+})
+
+// 加载订单详情
+async function loadOrderDetail() {
+  try {
+    // TODO: 调用API获取订单详情
+    // const result = await get(`/api/orders/${orderId.value}`)
+    // orderDetail.value = result.data
+    console.log('加载订单详情:', orderId.value)
+    
+    // 模拟数据已在上面定义
+  } catch (error) {
+    console.error('加载订单详情失败:', error)
+    uni.showToast({
+      title: '加载订单详情失败',
+      icon: 'none'
+    })
+  }
+}
+
+// 开始倒计时
+function startCountdown() {
+  // 初始倒计时时间（秒）
+  countdown.value = 30
+  
+  countdownTimer = setInterval(() => {
+    if (countdown.value > 0) {
+      countdown.value--
+    } else {
+      // 倒计时结束，自动返回
+      if (countdownTimer) {
+        clearInterval(countdownTimer)
+      }
+      uni.showToast({
+        title: '订单已释放',
+        icon: 'none',
+        duration: 2000
+      })
+      setTimeout(() => {
+        goBack()
+      }, 2000)
+    }
+  }, 1000) as unknown as number
+}
+
+// 返回
+function goBack() {
+  uni.navigateBack({
+    fail: () => {
+      uni.reLaunch({
+        url: '/pages/engineer/home'
+      })
+    }
+  })
+}
+
+// 拨打客户电话
+function callClient() {
+  uni.showModal({
+    title: '拨打电话',
+    content: `确认拨打 ${orderDetail.value.clientPhone}?`,
+    success: (res) => {
+      if (res.confirm) {
+        const phone = orderDetail.value.clientPhone.replace(/\*/g, '8')
+        uni.makePhoneCall({
+          phoneNumber: phone,
+          fail: () => {
+            uni.showToast({
+              title: '拨号失败',
+              icon: 'none'
+            })
+          }
+        })
+      }
+    }
+  })
+}
+
+// 导航到地址
+function navigateToLocation() {
+  uni.openLocation({
+    latitude: orderDetail.value.latitude,
+    longitude: orderDetail.value.longitude,
+    name: '服务地址',
+    address: orderDetail.value.address,
+    scale: 15,
+    fail: () => {
+      uni.showToast({
+        title: '打开地图失败',
+        icon: 'none'
+      })
+    }
+  })
+}
+
+// 查看现场照片
+function viewPhotos() {
+  if (orderDetail.value.images && orderDetail.value.images.length > 0) {
+    uni.previewImage({
+      urls: orderDetail.value.images,
+      current: 0
+    })
+  } else {
+    uni.showToast({
+      title: '暂无现场照片',
+      icon: 'none'
+    })
+  }
+}
+
+// 查看维修方案
+function viewPlan() {
+  uni.showToast({
+    title: '维修方案功能开发中',
+    icon: 'none'
+  })
+}
+
+// 拒绝订单
+function handleReject() {
+  uni.showModal({
+    title: '拒绝接单',
+    content: '确认要拒绝这个订单吗？',
+    confirmText: '确认拒绝',
+    cancelText: '再想想',
+    success: (res) => {
+      if (res.confirm) {
+        // 清除倒计时
+        if (countdownTimer) {
+          clearInterval(countdownTimer)
+        }
+        
+        // TODO: 调用API拒绝订单
+        uni.showToast({
+          title: '已拒绝订单',
+          icon: 'success',
+          duration: 1500
+        })
+        
+        setTimeout(() => {
+          goBack()
+        }, 1500)
+      }
+    }
+  })
+}
+
+// 立即接单
+function handleAccept() {
+  uni.showModal({
+    title: '确认接单',
+    content: '请确认您已了解订单详情，可以按时完成服务',
+    confirmText: '确认接单',
+    cancelText: '取消',
+    success: async (res) => {
+      if (res.confirm) {
+        // 清除倒计时
+        if (countdownTimer) {
+          clearInterval(countdownTimer)
+        }
+        
+        try {
+          // TODO: 调用接单API
+          // const result = await post(`/api/orders/${orderId.value}/accept`)
+          
+          uni.showToast({
+            title: '接单成功',
+            icon: 'success',
+            duration: 2000
+          })
+          
+          setTimeout(() => {
+            // 跳转到我的工单页面
+            uni.reLaunch({
+              url: '/pages/engineer/workorders'
+            })
+          }, 2000)
+        } catch (error) {
+          console.error('接单失败:', error)
+          uni.showToast({
+            title: '接单失败，请重试',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+// 顶部导航
+.top-nav {
+  background-color: #fff;
+  padding: 32rpx 32rpx;
+  padding-top: calc(112rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.back-btn,
+.placeholder {
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-icon {
+  font-size: 36rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.content-scroll {
+  flex: 1;
+  padding: 24rpx 32rpx 140rpx;
+  padding-top: calc(192rpx + env(safe-area-inset-top));
+}
+
+// 倒计时卡片
+.countdown-card {
+  background: linear-gradient(135deg, #FF6B35 0%, #E53935 100%);
+  border-radius: 24rpx;
+  padding: 40rpx;
+  margin-bottom: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(229, 57, 53, 0.3);
+}
+
+.countdown-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.countdown-number {
+  font-size: 96rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.countdown-label {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+
+.order-no {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+// 服务标题和价格
+.service-header {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.service-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.price-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.price-symbol {
+  font-size: 32rpx;
+  color: #E53935;
+  font-weight: 600;
+}
+
+.price-value {
+  font-size: 48rpx;
+  color: #E53935;
+  font-weight: 700;
+}
+
+.price-label {
+  font-size: 26rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+// 通用section
+.section {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-icon {
+  font-size: 32rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+// 客户信息
+.info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.client-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.client-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.client-phone {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.call-btn {
+  width: 80rpx;
+  height: 80rpx;
+  background-color: #E8F5E9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.call-emoji {
+  font-size: 40rpx;
+}
+
+// 服务地址
+.address-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.address-info {
+  flex: 1;
+}
+
+.address-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.distance-tag {
+  display: inline-flex;
+  padding: 4rpx 16rpx;
+  background-color: #FFF3E0;
+  border-radius: 8rpx;
+}
+
+.distance-text {
+  font-size: 24rpx;
+  color: #FF9800;
+  font-weight: 500;
+}
+
+.arrow-icon {
+  font-size: 40rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+
+// 服务详情
+.detail-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-item:last-of-type {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 28rpx;
+  color: #999;
+  flex-shrink: 0;
+  margin-right: 32rpx;
+  width: 160rpx;
+}
+
+.detail-value {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+  text-align: right;
+}
+
+.detail-value.multiline {
+  text-align: left;
+  line-height: 1.6;
+}
+
+// 附件按钮
+.attachment-btns {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.attachment-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 16rpx;
+  background-color: #f8f8f8;
+  border-radius: 12rpx;
+}
+
+.attachment-icon {
+  font-size: 32rpx;
+}
+
+.attachment-text {
+  font-size: 26rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+// 温馨提示
+.tips-card {
+  background-color: #E3F2FD;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.tips-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.tips-icon {
+  font-size: 28rpx;
+}
+
+.tips-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1976D2;
+}
+
+.tips-text {
+  font-size: 26rpx;
+  color: #1976D2;
+  line-height: 1.6;
+  display: block;
+}
+
+// 底部操作栏
+.bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+  z-index: 999;
+}
+
+.action-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reject-btn {
+  background-color: #F5F5F5;
+  color: #666;
+}
+
+.reject-btn:active {
+  background-color: #EEEEEE;
+}
+
+.accept-btn {
+  background-color: #E53935;
+  color: #fff;
+}
+
+.accept-btn:active {
+  background-color: #D32F2F;
+}
+</style>
+

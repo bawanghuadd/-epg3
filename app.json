@@ -37,7 +37,8 @@
   "plugins": {},
   "preloadRule": {},
   "resizable": true,
+  "navigateToMiniProgramAppIdList": [],
+  "usingStaticServer": false,
   "darkmode": false,
-  "themeLocation": "theme.json",
-  "tabBar": {}
+  "themeLocation": "theme.json"
 }

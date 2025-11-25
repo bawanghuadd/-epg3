@@ -575,13 +575,20 @@ function handleAction(action: string) {
 /* 顶部导航 */
 .top-nav {
   background-color: #fff;
-  padding: 24rpx 32rpx;
-  padding-top: calc(24rpx + env(safe-area-inset-top));
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .nav-back {
@@ -608,6 +615,7 @@ function handleAction(action: string) {
 
 .content-scroll {
   padding: 24rpx 32rpx;
+  padding-top: calc(164rpx + env(safe-area-inset-top));
 }
 
 /* 订单状态流程 */
@@ -1043,5 +1051,7 @@ function handleAction(action: string) {
   color: #E53935;
 }
 </style>
+
+
 
 

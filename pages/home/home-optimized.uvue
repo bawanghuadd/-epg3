@@ -252,10 +252,18 @@ function handleActionClick(item: any) {
 
 .top-nav {
   background-color: $bg-primary;
-  padding: 20rpx 32rpx;
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   @include flex-between;
   gap: 16rpx;
   border-bottom: 1rpx solid $border-light;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .location {
@@ -335,6 +343,7 @@ function handleActionClick(item: any) {
 
 .content-scroll {
   flex: 1;
+  padding-top: calc(144rpx + env(safe-area-inset-top));
 }
 
 .banner-wrapper {

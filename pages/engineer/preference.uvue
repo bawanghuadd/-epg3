@@ -1,0 +1,468 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="nav-back" @click="goBack">
+        <text class="back-text">‹ 返回</text>
+      </view>
+      <text class="nav-title">接单偏好</text>
+      <view class="nav-placeholder"></view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 常驻地 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">常驻地</text>
+          <text class="section-desc">选择您的主要居住或工作城市</text>
+        </view>
+        <view class="section-content">
+          <view class="input-wrapper" @click="selectResidence">
+            <text class="input-text" :class="{ placeholder: !preference.residence }">
+              {{ preference.residence || '请选择常驻地' }}
+            </text>
+            <text class="arrow-icon">›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 期望接单区域 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">期望接单区域</text>
+          <text class="section-desc">选择您希望接单的区域范围（可多选）</text>
+        </view>
+        <view class="section-content">
+          <view class="area-tags">
+            <view 
+              class="area-tag" 
+              :class="{ active: preference.serviceAreas.includes(city) }"
+              v-for="city in cities" 
+              :key="city"
+              @click="toggleServiceArea(city)"
+            >
+              <text class="area-tag-text">{{ city }}</text>
+              <text class="area-tag-check" v-if="preference.serviceAreas.includes(city)">✓</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 接单时间 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">接单时间</text>
+          <text class="section-desc">设置您的工作日和节假日的接单时间偏好</text>
+        </view>
+        
+        <!-- 工作日 -->
+        <view class="time-section">
+          <text class="time-label">工作日</text>
+          <view class="time-options">
+            <view 
+              class="time-option" 
+              :class="{ active: preference.workdayTime === option.value }"
+              v-for="option in timeOptions" 
+              :key="option.value"
+              @click="selectWorkdayTime(option.value)"
+            >
+              <text class="time-option-text">{{ option.label }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 节假日 -->
+        <view class="time-section">
+          <text class="time-label">节假日</text>
+          <view class="time-options">
+            <view 
+              class="time-option" 
+              :class="{ active: preference.holidayTime === option.value }"
+              v-for="option in timeOptions" 
+              :key="option.value"
+              @click="selectHolidayTime(option.value)"
+            >
+              <text class="time-option-text">{{ option.label }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 保存按钮 -->
+      <view class="save-btn-container">
+        <button class="save-btn" @click="savePreference">保存设置</button>
+      </view>
+
+      <!-- 占位，防止被底部遮挡 -->
+      <view style="height: 100rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { get, post, put } from '../../utils/request'
+
+// 接单偏好数据
+const preference = ref({
+  residence: '', // 常驻地
+  serviceAreas: [] as string[], // 期望接单区域（数组）
+  workdayTime: '', // 工作日接单时间
+  holidayTime: '' // 节假日接单时间
+})
+
+// 时间选项
+const timeOptions = [
+  { label: '全天', value: 'all' },
+  { label: '上午', value: 'morning' },
+  { label: '下午', value: 'afternoon' },
+  { label: '晚上', value: 'evening' }
+]
+
+// 城市列表（示例，实际应该从接口获取）
+const cities = ['北京', '上海', '广州', '深圳', '杭州', '南京', '苏州', '无锡', '常州', '扬州', '其他']
+
+// 返回上一页
+function goBack() {
+  uni.navigateBack()
+}
+
+// 选择常驻地
+function selectResidence() {
+  uni.showActionSheet({
+    itemList: cities,
+    success: (res) => {
+      preference.value.residence = cities[res.tapIndex]
+    }
+  })
+}
+
+// 切换期望接单区域（多选）
+function toggleServiceArea(city: string) {
+  const index = preference.value.serviceAreas.indexOf(city)
+  if (index > -1) {
+    // 已选中，取消选择
+    preference.value.serviceAreas.splice(index, 1)
+  } else {
+    // 未选中，添加选择
+    preference.value.serviceAreas.push(city)
+  }
+}
+
+// 选择工作日接单时间
+function selectWorkdayTime(value: string) {
+  preference.value.workdayTime = value
+}
+
+// 选择节假日接单时间
+function selectHolidayTime(value: string) {
+  preference.value.holidayTime = value
+}
+
+// 加载接单偏好
+async function loadPreference() {
+  try {
+    const result = await get('/api/engineer/preference')
+    if (result.code === 200 && result.data) {
+      preference.value = {
+        residence: result.data.residence || '',
+        serviceAreas: result.data.serviceAreas || [],
+        workdayTime: result.data.workdayTime || '',
+        holidayTime: result.data.holidayTime || ''
+      }
+    }
+  } catch (error) {
+    console.error('加载接单偏好失败:', error)
+    // 如果接口不存在或失败，从本地存储加载
+    const localPreference = uni.getStorageSync('engineerPreference')
+    if (localPreference) {
+      preference.value = localPreference
+    }
+  }
+}
+
+// 保存接单偏好
+async function savePreference() {
+  // 验证必填项
+  if (!preference.value.residence) {
+    uni.showToast({
+      title: '请选择常驻地',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (!preference.value.serviceAreas || preference.value.serviceAreas.length === 0) {
+    uni.showToast({
+      title: '请选择期望接单区域',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (!preference.value.workdayTime) {
+    uni.showToast({
+      title: '请选择工作日接单时间',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (!preference.value.holidayTime) {
+    uni.showToast({
+      title: '请选择节假日接单时间',
+      icon: 'none'
+    })
+    return
+  }
+
+  try {
+    // 保存到本地存储
+    uni.setStorageSync('engineerPreference', preference.value)
+
+    // 调用API保存
+    try {
+      await put('/api/engineer/preference', preference.value)
+    } catch (error) {
+      console.warn('保存到服务器失败，已保存到本地:', error)
+    }
+
+    uni.showToast({
+      title: '保存成功',
+      icon: 'success'
+    })
+
+    // 延迟返回上一页
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+  } catch (error) {
+    console.error('保存接单偏好失败:', error)
+    uni.showToast({
+      title: '保存失败，请重试',
+      icon: 'none'
+    })
+  }
+}
+
+onMounted(() => {
+  loadPreference()
+})
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 32rpx 32rpx;
+  padding-top: calc(96rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.nav-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 0;
+}
+
+.back-text {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-placeholder {
+  width: 44rpx;
+}
+
+.content-scroll {
+  flex: 1;
+  padding-top: calc(176rpx + env(safe-area-inset-top));
+}
+
+.section {
+  background-color: #fff;
+  margin: 24rpx 32rpx;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-desc {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.section-content {
+  margin-top: 16rpx;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx;
+  background-color: #f8f8f8;
+  border-radius: 12rpx;
+  border: 1rpx solid #e8e8e8;
+}
+
+.input-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.input-text.placeholder {
+  color: #999;
+}
+
+.arrow-icon {
+  font-size: 32rpx;
+  color: #999;
+}
+
+// 期望接单区域标签
+.area-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.area-tag {
+  padding: 16rpx 32rpx;
+  background-color: #f8f8f8;
+  border-radius: 8rpx;
+  border: 2rpx solid #e8e8e8;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  transition: all 0.3s ease;
+}
+
+.area-tag.active {
+  background-color: #FFE5E5;
+  border-color: #E53935;
+}
+
+.area-tag-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.area-tag.active .area-tag-text {
+  color: #E53935;
+  font-weight: 600;
+}
+
+.area-tag-check {
+  font-size: 24rpx;
+  color: #E53935;
+  font-weight: 600;
+}
+
+.time-section {
+  margin-top: 32rpx;
+}
+
+.time-label {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.time-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.time-option {
+  padding: 16rpx 32rpx;
+  background-color: #f8f8f8;
+  border-radius: 8rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
+}
+
+.time-option.active {
+  background-color: #FFE5E5;
+  border-color: #E53935;
+}
+
+.time-option-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.time-option.active .time-option-text {
+  color: #E53935;
+  font-weight: 600;
+}
+
+.save-btn-container {
+  padding: 32rpx;
+  margin-top: 24rpx;
+}
+
+.save-btn {
+  width: 100%;
+  background-color: #E53935;
+  color: #fff;
+  border: none;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.save-btn:active {
+  opacity: 0.8;
+}
+</style>
+

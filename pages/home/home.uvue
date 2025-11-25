@@ -392,12 +392,20 @@ function navigateTo(page: string) {
 
 .top-nav {
   background-color: #fff;
-  padding: 20rpx 32rpx;
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 16rpx;
   border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .location {
@@ -508,6 +516,7 @@ function navigateTo(page: string) {
 
 .content-scroll {
   flex: 1;
+  padding-top: calc(144rpx + env(safe-area-inset-top));
 }
 
 .banner-wrapper {

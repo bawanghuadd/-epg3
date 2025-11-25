@@ -502,10 +502,17 @@ function navigateTo(page: string) {
 
 .top-nav {
   background-color: #fff;
-  padding: 24rpx 32rpx;
-  padding-top: calc(24rpx + env(safe-area-inset-top));
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   text-align: center;
   border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .nav-title {
@@ -516,6 +523,7 @@ function navigateTo(page: string) {
 
 .content-scroll {
   flex: 1;
+  padding-top: calc(164rpx + env(safe-area-inset-top));
 }
 
 /* Tab横向滚动容器 */

@@ -3,7 +3,6 @@
     <!-- 顶部导航栏 -->
     <view class="top-nav">
       <text class="nav-title">我的工单</text>
-      <image class="search-icon" src="/static/icons/service-query.png" mode="aspectFit" @click="handleSearch"></image>
     </view>
 
     <scroll-view scroll-y class="content-scroll">
@@ -132,7 +131,7 @@
         <text class="nav-label">收入</text>
       </view>
       <view class="nav-item" @click="navigateTo('training')">
-        <image class="nav-icon" src="/static/icons/service-about.png" mode="aspectFit"></image>
+        <image class="nav-icon" src="/static/icons/training.svg" mode="aspectFit"></image>
         <text class="nav-label">培训认证</text>
       </view>
       <view class="nav-item" @click="navigateTo('profile')">
@@ -332,7 +331,7 @@ function handleMessage(workorder: any) {
 // 查看详情
 function handleViewDetail(workorder: any) {
   uni.navigateTo({
-    url: `/pages/order/detail?id=${workorder.id}&type=engineer`
+    url: `/pages/engineer/workorder-detail?id=${workorder.id}`
   })
 }
 
@@ -345,8 +344,8 @@ function navigateTo(page: string) {
   const pageMap: any = {
     'home': '/pages/engineer/home',
     'income': '/pages/engineer/income',
-    'training': '/pages/profile/profile', // TODO: 创建培训认证页面
-    'profile': '/pages/profile/profile'
+    'training': '/pages/engineer/training',
+    'profile': '/pages/engineer/profile'
   }
   
   if (pageMap[page]) {
@@ -367,13 +366,20 @@ function navigateTo(page: string) {
 
 .top-nav {
   background-color: #fff;
-  padding: 20rpx 32rpx;
-  padding-top: calc(20rpx + env(safe-area-inset-top));
+  padding: 32rpx 32rpx;
+  padding-top: calc(114rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .nav-title {
@@ -389,6 +395,7 @@ function navigateTo(page: string) {
 
 .content-scroll {
   flex: 1;
+  padding-top: calc(194rpx + env(safe-area-inset-top));
 }
 
 /* Tab横向滚动容器 */

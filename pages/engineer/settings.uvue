@@ -1,0 +1,634 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="nav-left" @click="goBack">
+        <text class="nav-back-icon">←</text>
+      </view>
+      <text class="nav-title">接单设置</text>
+      <view class="nav-right"></view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 接单状态 -->
+      <view class="section">
+        <text class="section-title">接单状态</text>
+        
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">自动接单</text>
+            <text class="setting-desc">符合条件的订单自动接单</text>
+          </view>
+          <switch 
+            :checked="settings.autoAccept" 
+            @change="toggleAutoAccept"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">暂停接单</text>
+          </view>
+          <switch 
+            :checked="settings.pauseAccept" 
+            @change="togglePauseAccept"
+            color="#9E9E9E"
+            class="setting-switch"
+          />
+        </view>
+      </view>
+
+      <!-- 接单范围 -->
+      <view class="section">
+        <text class="section-title">接单范围</text>
+        
+        <view class="radius-section">
+          <text class="radius-label">服务半径</text>
+          <text class="radius-value">{{ settings.serviceRadius }} km</text>
+          <slider 
+            :value="settings.serviceRadius" 
+            min="1" 
+            max="50" 
+            step="1"
+            @change="onRadiusChange"
+            activeColor="#2196F3"
+            backgroundColor="#E0E0E0"
+            block-size="20"
+            class="radius-slider"
+          />
+          <view class="radius-range">
+            <text class="range-text">1km</text>
+            <text class="range-text">50km</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 服务类型 -->
+      <view class="section">
+        <text class="section-title">服务类型</text>
+        
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">售后维修</text>
+          </view>
+          <switch 
+            :checked="settings.serviceTypes.aftersales" 
+            @change="toggleServiceType('aftersales', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">售前安装</text>
+          </view>
+          <switch 
+            :checked="settings.serviceTypes.presales" 
+            @change="toggleServiceType('presales', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">项目外包</text>
+          </view>
+          <switch 
+            :checked="settings.serviceTypes.outsourcing" 
+            @change="toggleServiceType('outsourcing', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+      </view>
+
+      <!-- 推送通知 -->
+      <view class="section">
+        <text class="section-title">推送通知</text>
+        
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">新订单推送</text>
+          </view>
+          <switch 
+            :checked="settings.notifications.newOrder" 
+            @change="toggleNotification('newOrder', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">消息提醒</text>
+          </view>
+          <switch 
+            :checked="settings.notifications.message" 
+            @change="toggleNotification('message', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+
+        <view class="setting-item">
+          <view class="setting-left">
+            <text class="setting-title">收益到账提醒</text>
+          </view>
+          <switch 
+            :checked="settings.notifications.income" 
+            @change="toggleNotification('income', $event)"
+            color="#00C853"
+            class="setting-switch"
+          />
+        </view>
+      </view>
+
+      <!-- 保存按钮 -->
+      <view class="save-btn-container">
+        <button class="save-btn" @click="saveSettings">
+          <text class="btn-icon">💾</text>
+          <text class="btn-text">保存设置</text>
+        </button>
+      </view>
+
+      <!-- 退出登录 -->
+      <view class="logout-section">
+        <button class="logout-btn" @click="handleLogout">
+          <text class="btn-icon">🚪</text>
+          <text class="btn-text">退出登录</text>
+        </button>
+      </view>
+
+      <!-- 底部占位 -->
+      <view style="height: 40rpx;"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { getOrderSettings, saveOrderSettings } from '../../api/engineer'
+
+// 设置数据
+const settings = reactive({
+  // 接单状态
+  autoAccept: true,
+  pauseAccept: false,
+  
+  // 服务半径
+  serviceRadius: 10,
+  
+  // 服务类型
+  serviceTypes: {
+    aftersales: true,    // 售后维修
+    presales: true,      // 售前安装
+    outsourcing: false   // 项目外包
+  },
+  
+  // 推送通知
+  notifications: {
+    newOrder: true,   // 新订单推送
+    message: true,    // 消息提醒
+    income: true      // 收益到账提醒
+  }
+})
+
+// 是否有修改
+const hasChanges = ref(false)
+
+onMounted(() => {
+  loadSettings()
+})
+
+// 加载设置
+async function loadSettings() {
+  try {
+    // 先从本地存储加载
+    const savedSettings = uni.getStorageSync('engineerSettings')
+    if (savedSettings) {
+      Object.assign(settings, savedSettings)
+    }
+    
+    // 从服务器获取最新设置
+    const result = await getOrderSettings()
+    if (result.code === 200 && result.data) {
+      Object.assign(settings, result.data)
+      // 保存到本地存储
+      uni.setStorageSync('engineerSettings', settings)
+    }
+  } catch (error) {
+    console.error('加载设置失败:', error)
+    // 如果接口失败,使用本地存储的设置
+  }
+}
+
+// 切换自动接单
+function toggleAutoAccept(e: any) {
+  settings.autoAccept = e.detail.value
+  hasChanges.value = true
+  
+  // 如果开启自动接单,则关闭暂停接单
+  if (settings.autoAccept) {
+    settings.pauseAccept = false
+  }
+}
+
+// 切换暂停接单
+function togglePauseAccept(e: any) {
+  settings.pauseAccept = e.detail.value
+  hasChanges.value = true
+  
+  // 如果开启暂停接单,则关闭自动接单
+  if (settings.pauseAccept) {
+    settings.autoAccept = false
+  }
+}
+
+// 服务半径变化
+function onRadiusChange(e: any) {
+  settings.serviceRadius = e.detail.value
+  hasChanges.value = true
+}
+
+// 切换服务类型
+function toggleServiceType(type: string, e: any) {
+  settings.serviceTypes[type] = e.detail.value
+  hasChanges.value = true
+}
+
+// 切换通知设置
+function toggleNotification(type: string, e: any) {
+  settings.notifications[type] = e.detail.value
+  hasChanges.value = true
+}
+
+// 保存设置
+async function saveSettings() {
+  try {
+    // 显示加载提示
+    uni.showLoading({
+      title: '保存中...',
+      mask: true
+    })
+    
+    // 调用API保存设置到服务器
+    const result = await saveOrderSettings(settings)
+    
+    if (result.code === 200) {
+      // 保存到本地存储
+      uni.setStorageSync('engineerSettings', settings)
+      
+      uni.hideLoading()
+      
+      uni.showToast({
+        title: '保存成功',
+        icon: 'success',
+        duration: 2000
+      })
+      
+      hasChanges.value = false
+      
+      // 延迟返回
+      setTimeout(() => {
+        const pages = getCurrentPages()
+        if (pages.length > 1) {
+          uni.navigateBack()
+        } else {
+          uni.redirectTo({
+            url: '/pages/engineer/home'
+          })
+        }
+      }, 1500)
+    } else {
+      throw new Error(result.msg || '保存失败')
+    }
+    
+  } catch (error) {
+    uni.hideLoading()
+    console.error('保存设置失败:', error)
+    
+    // 即使API失败,也保存到本地
+    uni.setStorageSync('engineerSettings', settings)
+    
+    uni.showToast({
+      title: error.msg || '保存失败,请重试',
+      icon: 'none',
+      duration: 2000
+    })
+  }
+}
+
+// 返回
+function goBack() {
+  const handleBack = () => {
+    // 获取当前页面栈
+    const pages = getCurrentPages()
+    if (pages.length > 1) {
+      // 如果不是第一个页面,正常返回
+      uni.navigateBack()
+    } else {
+      // 如果是第一个页面,跳转到接单大厅
+      uni.redirectTo({
+        url: '/pages/engineer/home'
+      })
+    }
+  }
+  
+  if (hasChanges.value) {
+    uni.showModal({
+      title: '提示',
+      content: '您有未保存的修改,确定要离开吗?',
+      success: (res) => {
+        if (res.confirm) {
+          handleBack()
+        }
+      }
+    })
+  } else {
+    handleBack()
+  }
+}
+
+// 退出登录
+function handleLogout() {
+  uni.showModal({
+    title: '确认退出',
+    content: '确定要退出登录吗?',
+    confirmColor: '#E53935',
+    success: (res) => {
+      if (res.confirm) {
+        performLogout()
+      }
+    }
+  })
+}
+
+// 执行退出登录
+async function performLogout() {
+  try {
+    uni.showLoading({
+      title: '退出中...',
+      mask: true
+    })
+    
+    // TODO: 调用退出登录API
+    // await logout()
+    
+    // 清除本地存储的用户信息
+    uni.removeStorageSync('userInfo')
+    uni.removeStorageSync('token')
+    uni.removeStorageSync('engineerSettings')
+    
+    uni.hideLoading()
+    
+    // 跳转到登录页面
+    uni.reLaunch({
+      url: '/pages/index/index'
+    })
+    
+  } catch (error) {
+    uni.hideLoading()
+    console.error('退出登录失败:', error)
+    
+    uni.showToast({
+      title: '退出失败,请重试',
+      icon: 'none',
+      duration: 2000
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+}
+
+// 顶部导航栏
+.top-nav {
+  background-color: #fff;
+  padding: 32rpx 32rpx;
+  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #F0F0F0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.nav-left {
+  width: 80rpx;
+  display: flex;
+  align-items: center;
+}
+
+.nav-back-icon {
+  font-size: 48rpx;
+  color: #333;
+  font-weight: 400;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-right {
+  width: 80rpx;
+}
+
+// 内容区域
+.content-scroll {
+  flex: 1;
+  padding: 0;
+  padding-top: calc(144rpx + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+}
+
+// 区块
+.section {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx 16rpx;
+  margin: 0 0 24rpx 0;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  width: 100%;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+// 设置项
+.setting-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #F5F5F5;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.setting-title {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.setting-desc {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.setting-switch {
+  transform: scale(1.1);
+}
+
+// 服务半径
+.radius-section {
+  padding: 16rpx 0;
+}
+
+.radius-label {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.radius-value {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #E53935;
+  display: block;
+  text-align: center;
+  margin: 32rpx 0 24rpx 0;
+}
+
+.radius-slider {
+  width: 100%;
+  margin: 32rpx 0 16rpx 0;
+}
+
+.radius-range {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0 8rpx;
+}
+
+.range-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+// 保存按钮
+.save-btn-container {
+  padding: 0 16rpx 40rpx 16rpx;
+  margin: 0;
+  width: 100%;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #E53935 0%, #D32F2F 100%);
+  border: none;
+  border-radius: 48rpx;
+  padding: 28rpx 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  box-shadow: 0 8rpx 24rpx rgba(229, 57, 53, 0.3);
+  width: 100%;
+}
+
+.save-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.btn-icon {
+  font-size: 32rpx;
+}
+
+.btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+// 退出登录
+.logout-section {
+  padding: 0 16rpx 40rpx 16rpx;
+  margin: 0;
+  width: 100%;
+}
+
+.logout-btn {
+  background: linear-gradient(135deg, #FF5252 0%, #F44336 100%);
+  border: none;
+  border-radius: 48rpx;
+  padding: 28rpx 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  box-shadow: 0 8rpx 24rpx rgba(244, 67, 54, 0.3);
+  width: 100%;
+}
+
+.logout-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.logout-btn .btn-icon {
+  font-size: 32rpx;
+  color: #fff;
+}
+
+.logout-btn .btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+// 底部占位
+.view {
+  height: 40rpx;
+}
+</style>
+

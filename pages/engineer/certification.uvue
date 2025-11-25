@@ -1,0 +1,1008 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <NavBar 
+      :title="certificationStatus === 'verified' ? '工程师认证' : '工程师认证申请'" 
+      :showBack="true"
+    />
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 认证状态卡片 -->
+      <view class="status-card" :class="statusClass">
+        <view class="status-icon">
+          <text class="icon-text">{{ statusIcon }}</text>
+        </view>
+        <view class="status-info">
+          <text class="status-title">{{ statusTitle }}</text>
+          <text class="status-desc">{{ statusDesc }}</text>
+        </view>
+      </view>
+
+      <!-- 表单区域 -->
+      <view class="form-section">
+        <!-- 基本信息 -->
+        <view class="section-title">
+          <text class="title-text">基本信息</text>
+          <text class="required-tip">*为必填项</text>
+        </view>
+
+        <!-- 姓名 -->
+        <view class="form-item">
+          <text class="label">姓名 <text class="required">*</text></text>
+          <input 
+            class="input" 
+            v-model="formData.name" 
+            placeholder="请输入真实姓名"
+            :disabled="!isEditable"
+          />
+        </view>
+
+        <!-- 所在地区 -->
+        <view class="form-item" @click="handleRegionPicker">
+          <text class="label">所在地区 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <text class="input-text" :class="{ placeholder: !formData.region }">
+              {{ formData.region || '请选择省市县' }}
+            </text>
+            <text class="arrow" v-if="isEditable">›</text>
+          </view>
+        </view>
+
+        <!-- 此前从业单位 -->
+        <view class="form-item">
+          <text class="label">此前从业单位 <text class="required">*</text></text>
+          <view class="checkbox-group">
+            <view 
+              v-for="(company, index) in companyOptions" 
+              :key="index"
+              class="checkbox-item"
+              @click="toggleCompany(company.value)"
+            >
+              <view class="checkbox" :class="{ checked: formData.companies.includes(company.value) }">
+                <text v-if="formData.companies.includes(company.value)" class="check-icon">✓</text>
+              </view>
+              <text class="checkbox-label">{{ company.label }}</text>
+            </view>
+          </view>
+          <!-- 其他单位输入 -->
+          <input 
+            v-if="formData.companies.includes('other')"
+            class="input other-input" 
+            v-model="formData.otherCompany" 
+            placeholder="请填写其他从业单位"
+            :disabled="!isEditable"
+          />
+        </view>
+
+        <!-- 身份证号码 -->
+        <view class="form-item">
+          <text class="label">身份证号码 <text class="required">*</text></text>
+          <input 
+            class="input" 
+            v-model="formData.idNumber" 
+            placeholder="请输入身份证号码"
+            maxlength="18"
+            :disabled="!isEditable"
+          />
+        </view>
+
+        <!-- 身份证照片上传 -->
+        <view class="form-item">
+          <text class="label">身份证照片 <text class="required">*</text></text>
+          <view class="id-card-upload">
+            <!-- 身份证正面 -->
+            <view class="upload-box" @click="uploadIdCard('front')">
+              <image 
+                v-if="formData.idCardFront" 
+                class="id-card-image" 
+                :src="formData.idCardFront" 
+                mode="aspectFill"
+              ></image>
+              <view v-else class="upload-placeholder">
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">上传身份证正面</text>
+              </view>
+              <view v-if="isEditable && formData.idCardFront" class="delete-btn" @click.stop="deleteIdCard('front')">
+                <text class="delete-icon">×</text>
+              </view>
+            </view>
+            <!-- 身份证反面 -->
+            <view class="upload-box" @click="uploadIdCard('back')">
+              <image 
+                v-if="formData.idCardBack" 
+                class="id-card-image" 
+                :src="formData.idCardBack" 
+                mode="aspectFill"
+              ></image>
+              <view v-else class="upload-placeholder">
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">上传身份证反面</text>
+              </view>
+              <view v-if="isEditable && formData.idCardBack" class="delete-btn" @click.stop="deleteIdCard('back')">
+                <text class="delete-icon">×</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 联系电话 -->
+        <view class="form-item">
+          <text class="label">联系电话 <text class="required">*</text></text>
+          <input 
+            class="input" 
+            v-model="formData.phone" 
+            placeholder="请输入联系电话"
+            type="number"
+            maxlength="11"
+            :disabled="!isEditable"
+          />
+        </view>
+
+        <!-- 是否有车 -->
+        <view class="form-item">
+          <text class="label">是否有车 <text class="required">*</text></text>
+          <view class="radio-group">
+            <view 
+              class="radio-item" 
+              @click="formData.hasCar = true"
+            >
+              <view class="radio" :class="{ checked: formData.hasCar === true }">
+                <view v-if="formData.hasCar === true" class="radio-dot"></view>
+              </view>
+              <text class="radio-label">有</text>
+            </view>
+            <view 
+              class="radio-item" 
+              @click="formData.hasCar = false"
+            >
+              <view class="radio" :class="{ checked: formData.hasCar === false }">
+                <view v-if="formData.hasCar === false" class="radio-dot"></view>
+              </view>
+              <text class="radio-label">无</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 工作年限 -->
+        <view class="form-item" @click="handleYearsPicker">
+          <text class="label">工作年限 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <text class="input-text" :class="{ placeholder: !formData.workYears }">
+              {{ formData.workYears ? formData.workYears + '年' : '请选择工作年限' }}
+            </text>
+            <text class="arrow" v-if="isEditable">›</text>
+          </view>
+        </view>
+
+        <!-- 资质上传 -->
+        <view class="section-title">
+          <text class="title-text">资质信息</text>
+        </view>
+
+        <!-- 相关证书 -->
+        <view class="form-item">
+          <text class="label">相关证书</text>
+          <view class="certificate-upload">
+            <view 
+              v-for="(cert, index) in formData.certificates" 
+              :key="index"
+              class="certificate-item"
+            >
+              <image class="cert-image" :src="cert" mode="aspectFill"></image>
+              <view v-if="isEditable" class="cert-delete" @click="deleteCertificate(index)">
+                <text class="delete-icon">×</text>
+              </view>
+            </view>
+            <view 
+              v-if="isEditable && formData.certificates.length < 9" 
+              class="certificate-add" 
+              @click="uploadCertificate"
+            >
+              <text class="add-icon">+</text>
+              <text class="add-text">添加证书</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 擅长技能 -->
+        <view class="form-item">
+          <text class="label">擅长技能 <text class="required">*</text></text>
+          <view class="skill-group">
+            <view 
+              v-for="(skill, index) in skillOptions" 
+              :key="index"
+              class="skill-item"
+              :class="{ active: formData.skills.includes(skill.value) }"
+              @click="toggleSkill(skill.value)"
+            >
+              <text class="skill-text">{{ skill.label }}</text>
+            </view>
+          </view>
+          <!-- 其他技能输入 -->
+          <input 
+            v-if="formData.skills.includes('other')"
+            class="input other-input" 
+            v-model="formData.otherSkill" 
+            placeholder="请填写其他擅长技能"
+            :disabled="!isEditable"
+          />
+        </view>
+      </view>
+
+      <!-- 提交按钮 -->
+      <view class="submit-section" v-if="isEditable">
+        <button class="submit-btn" @click="handleSubmit">提交认证申请</button>
+      </view>
+
+      <!-- 占位 -->
+      <view style="height: 100rpx;"></view>
+    </scroll-view>
+
+    <!-- 地区选择器 -->
+    <picker 
+      v-if="showRegionPicker"
+      mode="region" 
+      @change="onRegionChange"
+      @cancel="showRegionPicker = false"
+    >
+      <view></view>
+    </picker>
+
+    <!-- 工作年限选择器 -->
+    <picker 
+      v-if="showYearsPicker"
+      :range="yearsRange" 
+      @change="onYearsChange"
+      @cancel="showYearsPicker = false"
+    >
+      <view></view>
+    </picker>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import NavBar from '../../components/NavBar/NavBar.uvue'
+
+// 认证状态: unverified-未认证, pending-审核中, verified-已认证, rejected-已拒绝
+const certificationStatus = ref<'unverified' | 'pending' | 'verified' | 'rejected'>('unverified')
+
+// 是否可编辑（未认证或被拒绝时可编辑）
+const isEditable = computed(() => {
+  return certificationStatus.value === 'unverified' || certificationStatus.value === 'rejected'
+})
+
+// 状态相关计算属性
+const statusClass = computed(() => {
+  const classMap = {
+    unverified: 'status-unverified',
+    pending: 'status-pending',
+    verified: 'status-verified',
+    rejected: 'status-rejected'
+  }
+  return classMap[certificationStatus.value]
+})
+
+const statusIcon = computed(() => {
+  const iconMap = {
+    unverified: '!',
+    pending: '⏱',
+    verified: '✓',
+    rejected: '✕'
+  }
+  return iconMap[certificationStatus.value]
+})
+
+const statusTitle = computed(() => {
+  const titleMap = {
+    unverified: '未认证',
+    pending: '审核中',
+    verified: '已认证',
+    rejected: '认证被拒绝'
+  }
+  return titleMap[certificationStatus.value]
+})
+
+const statusDesc = computed(() => {
+  const descMap = {
+    unverified: '请完善以下信息并提交认证申请',
+    pending: '您的认证申请正在审核中，请耐心等待',
+    verified: '您已通过工程师认证',
+    rejected: '您的认证申请被拒绝，请修改后重新提交'
+  }
+  return descMap[certificationStatus.value]
+})
+
+// 表单数据
+const formData = ref({
+  name: '',
+  region: '',
+  companies: [] as string[],
+  otherCompany: '',
+  idNumber: '',
+  idCardFront: '',
+  idCardBack: '',
+  phone: '',
+  hasCar: null as boolean | null,
+  workYears: '',
+  certificates: [] as string[],
+  skills: [] as string[],
+  otherSkill: ''
+})
+
+// 从业单位选项
+const companyOptions = [
+  { label: '华为', value: 'huawei' },
+  { label: '海康', value: 'hikvision' },
+  { label: '大华', value: 'dahua' },
+  { label: '宇视', value: 'uniview' },
+  { label: '科达', value: 'kedacom' },
+  { label: '博世', value: 'bosch' },
+  { label: '霍尼韦尔', value: 'honeywell' },
+  { label: '天地伟业', value: 'tiandy' },
+  { label: '个人', value: 'individual' },
+  { label: '其他', value: 'other' }
+]
+
+// 技能选项
+const skillOptions = [
+  { label: '数据库', value: 'database' },
+  { label: '中间件', value: 'middleware' },
+  { label: '交换机', value: 'switch' },
+  { label: '操作系统', value: 'os' },
+  { label: '等保', value: 'security' },
+  { label: '服务器', value: 'server' },
+  { label: '存储', value: 'storage' },
+  { label: '云平台', value: 'cloud' },
+  { label: '虚拟化技术', value: 'virtualization' },
+  { label: '大数据', value: 'bigdata' },
+  { label: '其他', value: 'other' }
+]
+
+// 工作年限选项
+const yearsRange = ['1年以下', '1年', '2年', '3年', '4年', '5年', '6年', '7年', '8年', '9年', '10年以上']
+
+// 地区选择器
+const showRegionPicker = ref(false)
+const showYearsPicker = ref(false)
+
+// 切换从业单位
+function toggleCompany(value: string) {
+  if (!isEditable.value) return
+  
+  const index = formData.value.companies.indexOf(value)
+  if (index > -1) {
+    formData.value.companies.splice(index, 1)
+  } else {
+    formData.value.companies.push(value)
+  }
+}
+
+// 切换技能
+function toggleSkill(value: string) {
+  if (!isEditable.value) return
+  
+  const index = formData.value.skills.indexOf(value)
+  if (index > -1) {
+    formData.value.skills.splice(index, 1)
+  } else {
+    formData.value.skills.push(value)
+  }
+}
+
+// 地区选择
+function handleRegionPicker() {
+  if (!isEditable.value) return
+  showRegionPicker.value = true
+  // 触发picker显示
+  setTimeout(() => {
+    // 这里需要手动触发picker
+  }, 100)
+}
+
+function onRegionChange(e: any) {
+  const region = e.detail.value
+  formData.value.region = region.join(' ')
+  showRegionPicker.value = false
+}
+
+// 工作年限选择
+function handleYearsPicker() {
+  if (!isEditable.value) return
+  showYearsPicker.value = true
+}
+
+function onYearsChange(e: any) {
+  formData.value.workYears = yearsRange[e.detail.value]
+  showYearsPicker.value = false
+}
+
+// 上传身份证
+function uploadIdCard(type: 'front' | 'back') {
+  if (!isEditable.value) return
+  
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      const tempFilePath = res.tempFilePaths[0]
+      // TODO: 上传到服务器
+      if (type === 'front') {
+        formData.value.idCardFront = tempFilePath
+      } else {
+        formData.value.idCardBack = tempFilePath
+      }
+    }
+  })
+}
+
+// 删除身份证照片
+function deleteIdCard(type: 'front' | 'back') {
+  if (type === 'front') {
+    formData.value.idCardFront = ''
+  } else {
+    formData.value.idCardBack = ''
+  }
+}
+
+// 上传证书
+function uploadCertificate() {
+  if (!isEditable.value) return
+  
+  uni.chooseImage({
+    count: 9 - formData.value.certificates.length,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      // TODO: 上传到服务器
+      formData.value.certificates.push(...res.tempFilePaths)
+    }
+  })
+}
+
+// 删除证书
+function deleteCertificate(index: number) {
+  formData.value.certificates.splice(index, 1)
+}
+
+// 表单验证
+function validateForm(): boolean {
+  if (!formData.value.name) {
+    uni.showToast({ title: '请输入姓名', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.region) {
+    uni.showToast({ title: '请选择所在地区', icon: 'none' })
+    return false
+  }
+  
+  if (formData.value.companies.length === 0) {
+    uni.showToast({ title: '请选择此前从业单位', icon: 'none' })
+    return false
+  }
+  
+  if (formData.value.companies.includes('other') && !formData.value.otherCompany) {
+    uni.showToast({ title: '请填写其他从业单位', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.idNumber) {
+    uni.showToast({ title: '请输入身份证号码', icon: 'none' })
+    return false
+  }
+  
+  // 身份证号码格式验证
+  const idCardReg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/
+  if (!idCardReg.test(formData.value.idNumber)) {
+    uni.showToast({ title: '身份证号码格式不正确', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.idCardFront) {
+    uni.showToast({ title: '请上传身份证正面照片', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.idCardBack) {
+    uni.showToast({ title: '请上传身份证反面照片', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.phone) {
+    uni.showToast({ title: '请输入联系电话', icon: 'none' })
+    return false
+  }
+  
+  // 手机号格式验证
+  const phoneReg = /^1[3-9]\d{9}$/
+  if (!phoneReg.test(formData.value.phone)) {
+    uni.showToast({ title: '手机号格式不正确', icon: 'none' })
+    return false
+  }
+  
+  if (formData.value.hasCar === null) {
+    uni.showToast({ title: '请选择是否有车', icon: 'none' })
+    return false
+  }
+  
+  if (!formData.value.workYears) {
+    uni.showToast({ title: '请选择工作年限', icon: 'none' })
+    return false
+  }
+  
+  if (formData.value.skills.length === 0) {
+    uni.showToast({ title: '请选择擅长技能', icon: 'none' })
+    return false
+  }
+  
+  if (formData.value.skills.includes('other') && !formData.value.otherSkill) {
+    uni.showToast({ title: '请填写其他擅长技能', icon: 'none' })
+    return false
+  }
+  
+  return true
+}
+
+// 提交认证申请
+function handleSubmit() {
+  if (!validateForm()) {
+    return
+  }
+  
+  uni.showLoading({ title: '提交中...' })
+  
+  // TODO: 提交到服务器
+  setTimeout(() => {
+    uni.hideLoading()
+    uni.showToast({
+      title: '提交成功，请等待审核',
+      icon: 'success'
+    })
+    
+    // 更新状态为审核中
+    certificationStatus.value = 'pending'
+  }, 1500)
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-scroll {
+  flex: 1;
+  padding: 24rpx;
+}
+
+/* 状态卡片 */
+.status-card {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.status-icon {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.status-unverified {
+  .status-icon {
+    background-color: #FFF3E0;
+    color: #FF9800;
+  }
+}
+
+.status-pending {
+  .status-icon {
+    background-color: #E3F2FD;
+    color: #2196F3;
+  }
+}
+
+.status-verified {
+  .status-icon {
+    background-color: #E8F5E9;
+    color: #4CAF50;
+  }
+}
+
+.status-rejected {
+  .status-icon {
+    background-color: #FFEBEE;
+    color: #F44336;
+  }
+}
+
+.status-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.status-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.status-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 表单区域 */
+.form-section {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid #F5F5F5;
+}
+
+.title-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.required-tip {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 表单项 */
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 16rpx;
+  font-weight: 500;
+}
+
+.required {
+  color: #F44336;
+}
+
+.input {
+  width: 100%;
+  height: 88rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+}
+
+.input-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.input-text.placeholder {
+  color: #999;
+}
+
+.arrow {
+  font-size: 40rpx;
+  color: #999;
+  margin-left: 16rpx;
+}
+
+.other-input {
+  margin-top: 16rpx;
+}
+
+/* 复选框组 */
+.checkbox-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 24rpx;
+}
+
+.checkbox-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  width: calc(50% - 12rpx);
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #D9D9D9;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkbox.checked {
+  background-color: #FF6B35;
+  border-color: #FF6B35;
+}
+
+.check-icon {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
+.checkbox-label {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+}
+
+/* 单选框组 */
+.radio-group {
+  display: flex;
+  flex-direction: row;
+  gap: 48rpx;
+}
+
+.radio-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.radio {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #D9D9D9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.radio.checked {
+  border-color: #FF6B35;
+}
+
+.radio-dot {
+  width: 24rpx;
+  height: 24rpx;
+  background-color: #FF6B35;
+  border-radius: 50%;
+}
+
+.radio-label {
+  font-size: 28rpx;
+  color: #333;
+}
+
+/* 身份证上传 */
+.id-card-upload {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.upload-box {
+  flex: 1;
+  height: 240rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  border: 2rpx dashed #D9D9D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.id-card-image {
+  width: 100%;
+  height: 100%;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.upload-icon {
+  font-size: 56rpx;
+}
+
+.upload-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-icon {
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* 证书上传 */
+.certificate-upload {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.certificate-item {
+  width: calc(33.333% - 11rpx);
+  height: 200rpx;
+  position: relative;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.cert-image {
+  width: 100%;
+  height: 100%;
+}
+
+.cert-delete {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.certificate-add {
+  width: calc(33.333% - 11rpx);
+  height: 200rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  border: 2rpx dashed #D9D9D9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.add-icon {
+  font-size: 48rpx;
+  color: #999;
+}
+
+.add-text {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 技能标签 */
+.skill-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.skill-item {
+  padding: 16rpx 32rpx;
+  background-color: #F5F5F5;
+  border-radius: 40rpx;
+  border: 2rpx solid transparent;
+}
+
+.skill-item.active {
+  background-color: #FFF3E0;
+  border-color: #FF6B35;
+}
+
+.skill-text {
+  font-size: 26rpx;
+  color: #333;
+}
+
+.skill-item.active .skill-text {
+  color: #FF6B35;
+  font-weight: 500;
+}
+
+/* 提交按钮 */
+.submit-section {
+  padding: 0 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 96rpx;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(255, 107, 53, 0.3);
+}
+
+.submit-btn::after {
+  border: none;
+}
+</style>
+

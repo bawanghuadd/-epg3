@@ -76,8 +76,18 @@ export function navigateToVerify() {
 /**
  * 返回上一页
  */
-export function navigateBack() {
-  uni.navigateBack()
+export function navigateBack(fallbackUrl = ROUTES.HOME) {
+  const pages = getCurrentPages()
+  
+  if (pages && pages.length > 1) {
+    uni.navigateBack()
+    return
+  }
+
+  const target = fallbackUrl || ROUTES.HOME
+  uni.reLaunch({
+    url: target
+  })
 }
 
 /**

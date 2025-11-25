@@ -41,17 +41,25 @@
 			}
 		},
 		{
-			"path": "pages/profile/verify",
+			"path": "pages/order/create",
 			"style": {
-				"navigationBarTitleText": "实名认证",
+				"navigationBarTitleText": "发布工单",
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
 		},
 		{
-			"path": "pages/order/create",
+			"path": "pages/order/detail",
 			"style": {
-				"navigationBarTitleText": "发布工单",
+				"navigationBarTitleText": "订单详情",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/order/admin-detail",
+			"style": {
+				"navigationBarTitleText": "订单管理详情",
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
@@ -89,11 +97,67 @@
 			}
 		},
 		{
+			"path": "pages/engineer/workorder-detail",
+			"style": {
+				"navigationBarTitleText": "订单详情",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
 			"path": "pages/engineer/income",
 			"style": {
 				"navigationBarTitleText": "我的收入",
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/engineer/training",
+			"style": {
+				"navigationBarTitleText": "培训认证",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/engineer/profile",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/engineer/preference",
+			"style": {
+				"navigationBarTitleText": "接单偏好",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/engineer/order-accept",
+			"style": {
+				"navigationBarTitleText": "立即接单",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/engineer/settings",
+			"style": {
+				"navigationBarTitleText": "接单设置",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/engineer/certification",
+			"style": {
+				"navigationBarTitleText": "工程师认证",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
 			}
 		},
 		{

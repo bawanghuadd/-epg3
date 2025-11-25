@@ -16,7 +16,10 @@ const state = {
   token: '',
   // 模拟登录状态
   isMockLogin: false,
-  mockUserType: ''
+  mockUserType: '',
+  // 工程师认证状态
+  engineerVerifyStatus: null, // null-未认证, pending-审核中, approved-已通过, rejected-已拒绝
+  engineerVerifyInfo: null // 工程师认证信息
 }
 
 const mutations = {
@@ -64,6 +67,32 @@ const mutations = {
   },
 
   /**
+   * 设置工程师认证状态
+   */
+  SET_ENGINEER_VERIFY_STATUS(state, status) {
+    state.engineerVerifyStatus = status
+    // 同步到本地存储
+    if (status) {
+      uni.setStorageSync('engineerVerifyStatus', status)
+    } else {
+      uni.removeStorageSync('engineerVerifyStatus')
+    }
+  },
+
+  /**
+   * 设置工程师认证信息
+   */
+  SET_ENGINEER_VERIFY_INFO(state, info) {
+    state.engineerVerifyInfo = info
+    // 同步到本地存储
+    if (info) {
+      uni.setStorageSync('engineerVerifyInfo', info)
+    } else {
+      uni.removeStorageSync('engineerVerifyInfo')
+    }
+  },
+
+  /**
    * 清除用户信息
    */
   CLEAR_USER_INFO(state) {
@@ -74,8 +103,12 @@ const mutations = {
     state.token = ''
     state.isMockLogin = false
     state.mockUserType = ''
+    state.engineerVerifyStatus = null
+    state.engineerVerifyInfo = null
     uni.removeStorageSync('token')
     uni.removeStorageSync('userInfo')
+    uni.removeStorageSync('engineerVerifyStatus')
+    uni.removeStorageSync('engineerVerifyInfo')
   }
 }
 
@@ -137,6 +170,69 @@ const actions = {
   updateUserInfo({ commit }, userInfo) {
     commit('SET_USER_INFO', userInfo)
     uni.setStorageSync('userInfo', userInfo)
+  },
+
+  /**
+   * 获取工程师认证状态
+   */
+  async fetchEngineerVerifyStatus({ commit }) {
+    try {
+      // TODO: 调用获取认证状态接口
+      const response = await uni.request({
+        url: '/api/engineer/verify/status',
+        method: 'GET'
+      })
+
+      if (response.data.code === 200) {
+        const { status, verifyInfo } = response.data.data
+        commit('SET_ENGINEER_VERIFY_STATUS', status)
+        commit('SET_ENGINEER_VERIFY_INFO', verifyInfo)
+        return { success: true, status, verifyInfo }
+      } else {
+        return { success: false, message: response.data.message }
+      }
+    } catch (error) {
+      console.error('获取工程师认证状态失败:', error)
+      return { success: false, message: '获取认证状态失败' }
+    }
+  },
+
+  /**
+   * 提交工程师认证
+   */
+  async submitEngineerVerify({ commit }, verifyData) {
+    try {
+      // TODO: 调用提交认证接口
+      const response = await uni.request({
+        url: '/api/engineer/verify/submit',
+        method: 'POST',
+        data: verifyData
+      })
+
+      if (response.data.code === 200) {
+        commit('SET_ENGINEER_VERIFY_STATUS', 'pending')
+        return { success: true }
+      } else {
+        return { success: false, message: response.data.message }
+      }
+    } catch (error) {
+      console.error('提交工程师认证失败:', error)
+      return { success: false, message: '提交认证失败' }
+    }
+  },
+
+  /**
+   * 从本地存储恢复认证状态
+   */
+  restoreEngineerVerifyStatus({ commit }) {
+    const status = uni.getStorageSync('engineerVerifyStatus')
+    const info = uni.getStorageSync('engineerVerifyInfo')
+    if (status) {
+      commit('SET_ENGINEER_VERIFY_STATUS', status)
+    }
+    if (info) {
+      commit('SET_ENGINEER_VERIFY_INFO', info)
+    }
   }
 }
 
@@ -154,7 +250,19 @@ const getters = {
   // 是否是模拟登录
   isMockLogin: state => state.isMockLogin,
   // Token
-  token: state => state.token
+  token: state => state.token,
+  // 工程师认证状态
+  engineerVerifyStatus: state => state.engineerVerifyStatus,
+  // 工程师认证信息
+  engineerVerifyInfo: state => state.engineerVerifyInfo,
+  // 工程师是否已认证通过
+  isEngineerVerified: state => state.engineerVerifyStatus === 'approved',
+  // 工程师是否在审核中
+  isEngineerVerifyPending: state => state.engineerVerifyStatus === 'pending',
+  // 工程师是否被拒绝
+  isEngineerVerifyRejected: state => state.engineerVerifyStatus === 'rejected',
+  // 工程师是否未认证
+  isEngineerUnverified: state => !state.engineerVerifyStatus || state.engineerVerifyStatus === 'rejected'
 }
 
 export default {

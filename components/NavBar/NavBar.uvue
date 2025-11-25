@@ -1,12 +1,12 @@
 <template>
-  <view class="nav-bar" :style="{ paddingTop: safeAreaTop }">
-    <view class="nav-content">
+  <view class="nav-bar">
+    <view class="nav-content" :style="{ paddingTop: safeAreaTop }">
       <!-- 左侧：返回按钮或自定义内容 -->
       <view class="nav-left">
         <view v-if="showBack" class="nav-back" @click="handleBack">
           <text class="back-icon">‹</text>
         </view>
-        <slot name="left"></slot>
+        <!-- <slot name="left"></slot> -->
       </view>
       
       <!-- 中间：标题 -->
@@ -66,8 +66,12 @@ function handleBack() {
 .nav-bar {
   background-color: v-bind(backgroundColor);
   border-bottom: 1rpx solid $border-light;
-  position: relative;
-  z-index: 100;
+  position: fixed;
+  top: 0rpx;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 .nav-content {

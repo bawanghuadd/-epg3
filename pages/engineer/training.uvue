@@ -1,0 +1,397 @@
+<template>
+  <view class="page">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <text class="nav-title">培训认证</text>
+      <!-- 历史记录功能已删除 -->
+    </view>
+
+    <scroll-view scroll-y class="content-scroll">
+      <!-- 顶部Banner -->
+      <view class="banner-card">
+        <view class="banner-content">
+          <text class="banner-title">技能提升计划</text>
+          <text class="banner-desc">考取更多证书，解锁高薪订单</text>
+          <view class="banner-stats">
+            <view class="stat-row">
+              <text class="stat-num">3</text>
+              <text class="stat-txt">已持证书</text>
+            </view>
+            <view class="stat-divider"></view>
+            <view class="stat-row">
+              <text class="stat-num">12</text>
+              <text class="stat-txt">学习课时</text>
+            </view>
+          </view>
+        </view>
+        <image class="banner-img" src="/static/icon-png-/技能提升.png" mode="aspectFit"></image>
+      </view>
+
+      <!-- 我的证书 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">我的证书</text>
+          <text class="more-link" @click="viewAllCertificates">全部证书 ›</text>
+        </view>
+        <scroll-view scroll-x class="cert-scroll">
+          <view class="cert-list">
+            <view class="cert-card active">
+              <view class="cert-icon-box">
+                <image class="cert-icon" src="/static/icon-png-/特种作业.png" mode="aspectFit"></image>
+              </view>
+              <text class="cert-name">特种作业操作证</text>
+              <text class="cert-status">已认证</text>
+              <text class="cert-date">2026.05.20 到期</text>
+            </view>
+            <view class="cert-card active">
+              <view class="cert-icon-box">
+                 <image class="cert-icon" src="/static/icon-png-/电网.png" mode="aspectFit"></image>
+              </view>
+              <text class="cert-name">电工进网许可证</text>
+              <text class="cert-status">已认证</text>
+              <text class="cert-date">2025.12.10 到期</text>
+            </view>
+             <view class="cert-card pending">
+              <view class="cert-icon-box">
+                 <image class="cert-icon" src="/static/icon-png-/智能家居.png" mode="aspectFit"></image>
+              </view>
+              <text class="cert-name">智能家居工程师</text>
+              <text class="cert-status pending">审核中</text>
+              <text class="cert-date">预计3个工作日</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 占位 -->
+      <view style="height: 200rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <view class="bottom-nav">
+      <view class="nav-item" @click="navigateTo('home')">
+        <image class="nav-icon" src="/static/icons/home.png" mode="aspectFit"></image>
+        <text class="nav-label">接单大厅</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('workorders')">
+        <image class="nav-icon" src="/static/icons/order.png" mode="aspectFit"></image>
+        <text class="nav-label">我的工单</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('income')">
+        <image class="nav-icon" src="/static/icons/wallet.png" mode="aspectFit"></image>
+        <text class="nav-label">收入</text>
+      </view>
+      <view class="nav-item active" @click="navigateTo('training')">
+        <image class="nav-icon" src="/static/icons/training-active.svg" mode="aspectFit"></image>
+        <text class="nav-label">培训认证</text>
+      </view>
+      <view class="nav-item" @click="navigateTo('profile')">
+        <image class="nav-icon" src="/static/icons/profile.png" mode="aspectFit"></image>
+        <text class="nav-label">我的</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+function goToHistory() {
+  uni.showToast({
+    title: '学习记录功能开发中',
+    icon: 'none'
+  })
+}
+
+function viewAllCertificates() {
+  uni.showToast({
+    title: '证书列表开发中',
+    icon: 'none'
+  })
+}
+
+// 底部导航
+function navigateTo(page: string) {
+  if (page === 'training') {
+    return // 已经在培训页面
+  }
+  
+  const pageMap: any = {
+    'home': '/pages/engineer/home',
+    'workorders': '/pages/engineer/workorders',
+    'income': '/pages/engineer/income',
+    'training': '/pages/engineer/training',
+    'profile': '/pages/engineer/profile'
+  }
+  
+  if (pageMap[page]) {
+    uni.reLaunch({
+      url: pageMap[page]
+    })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-nav {
+  background-color: #fff;
+  padding: 32rpx 32rpx;
+  padding-top: calc(112rpx + env(safe-area-inset-top));
+  padding-bottom: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.history-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.content-scroll {
+  flex: 1;
+  padding: 24rpx;
+  padding-top: calc(196rpx + env(safe-area-inset-top) + 24rpx);
+}
+
+/* Banner卡片 */
+.banner-card {
+  background: linear-gradient(135deg, #4B79A1 0%, #283E51 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(40, 62, 81, 0.3);
+}
+
+.banner-content {
+  flex: 1;
+  z-index: 1;
+}
+
+.banner-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.banner-desc {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.banner-stats {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.stat-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat-txt {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 32rpx;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.banner-img {
+  width: 160rpx;
+  height: 160rpx;
+  opacity: 0.9;
+}
+
+/* 通用Section */
+.section {
+  margin-bottom: 32rpx;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding: 0 8rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.more-link {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 证书列表 */
+.cert-scroll {
+  white-space: nowrap;
+}
+
+.cert-list {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  padding-bottom: 10rpx; /* 为阴影留空间 */
+}
+
+.cert-card {
+  width: 260rpx;
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cert-icon-box {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+  background-color: #F5F5F5;
+}
+
+.cert-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.cert-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.3;
+  height: 68rpx; 
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.cert-status {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background-color: #E8F5E9;
+  color: #4CAF50;
+}
+
+.cert-status.pending {
+  background-color: #FFF3E0;
+  color: #FF9800;
+}
+
+.cert-date {
+  font-size: 20rpx;
+  color: #999;
+}
+
+/* 底部导航栏 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8rpx 0;
+  padding-bottom: calc(8rpx + env(safe-area-inset-bottom));
+  z-index: 999;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex: 1;
+}
+
+.bottom-nav .nav-item.active {
+  color: #E53935;
+}
+
+.bottom-nav .nav-item.active .nav-label {
+  color: #E53935;
+}
+
+.bottom-nav .nav-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.bottom-nav .nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.bottom-nav .nav-item:not(.active) .nav-icon {
+  opacity: 0.5;
+}
+
+.bottom-nav .nav-label {
+  font-size: 22rpx;
+  color: #666;
+}
+</style>
+
